@@ -58,10 +58,10 @@ dot = draw_dot(y)
 
 ### Running tests
 
-To run the unit tests you will have to install [PyTorch](https://pytorch.org/), which the tests use as a reference for verifying the correctness of the calculated gradients. Then simply:
+To run the unit tests:
 
 ```bash
-python -m pytest
+python -m unittest tests/*.py
 ```
 
 ### License
