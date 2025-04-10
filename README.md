@@ -1,7 +1,7 @@
 
 # micrograd
 
-![awww](puppy.jpg)
+![awww](assets/puppy.jpg)
 
 A tiny Autograd engine (with a bite! :)). Implements backpropagation (reverse-mode autodiff) over a dynamically built DAG and a small neural networks library on top of it with a PyTorch-like API. Both are tiny, with about 100 and 50 lines of code respectively. The DAG only operates over scalar values, so e.g. we chop up each neuron into all of its individual tiny adds and multiplies. However, this is enough to build up entire deep neural nets doing binary classification, as the demo notebook shows. Potentially useful for educational purposes.
 
@@ -40,7 +40,7 @@ print(f'{b.grad:.4f}') # prints 645.5773, i.e. the numerical value of dg/db
 
 The notebook `demo.ipynb` provides a full demo of training an 2-layer neural network (MLP) binary classifier. This is achieved by initializing a neural net from `micrograd.nn` module, implementing a simple svm "max-margin" binary classification loss and using SGD for optimization. As shown in the notebook, using a 2-layer neural net with two 16-node hidden layers we achieve the following decision boundary on the moon dataset:
 
-![2d neuron](moon_mlp.png)
+![2d neuron](assets/moon_mlp.png)
 
 ### Tracing / visualization
 
@@ -54,7 +54,7 @@ y = n(x)
 dot = draw_dot(y)
 ```
 
-![2d neuron](gout.svg)
+![2d neuron](assets/gout.svg)
 
 ### Running tests
 
