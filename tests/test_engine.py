@@ -1,8 +1,22 @@
 from unittest import TestCase
-import torch
 from micrograd.engine import Value
+from numpy import array, isclose, allclose
 
 class AutodiffTest(TestCase):
+
+    def test_basic(self):
+
+        a = Value(shape=(2,), name='a')
+        b = Value(shape=(2,), name='b')
+        c = (a + 2).relu() * b ** 2
+        c.forward(a=array([-3, 1]), b=array([2, 3]))
+        self.assertTrue(allclose(c.data, [0, 27]))
+
+        #c.backward()
+        #print(c.grad)
+        #print(a.grad)
+        #print(b.grad)
+        #self.assertTrue(0)
 
     def test_sanity_check(self):
 

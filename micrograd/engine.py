@@ -1,18 +1,43 @@
 
+from numpy import zeros, shape as get_shape, where, sum as npsum, ndarray
+
 class Value:
     """ stores a single scalar value and its gradient """
 
-    def __init__(self, data, _children=(), _op=''):
-        self.data = data
-        self.grad = 0
+    def __init__(self, data=None, _children=(), _op='',
+                 shape=None, name=None):
+        if data is not None:
+            assert isinstance(data, (ndarray, float, int))
+            assert name is None
+            assert shape is None
+            self.data = data
+            self.name = None
+            self.shape = get_shape(data)
+        else:
+            assert name
+            assert shape is not None
+            self.name = name
+            self.shape = shape
+            self.data = zeros(self.shape)
+        self.grad = zeros(self.shape)
         # internal variables used for autograd graph construction
         self._backward = lambda: None
         self._prev = set(_children)
         self._op = _op # the op that produced this node, for graphviz / debugging / etc
 
+        def _forward(**kwds):
+            if self.name:
+                assert get_shape(kwds[self.name]) == self.shape
+                self.data = kwds[self.name]
+        self._forward = _forward
+
     def __add__(self, other):
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data + other.data, (self, other), '+')
+
+        def _forward(**kwds):
+            out.data = self.data + other.data
+        out._forward = _forward
 
         def _backward():
             self.grad += out.grad
@@ -25,6 +50,10 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other), '*')
 
+        def _forward(**kwds):
+            out.data = self.data * other.data
+        out._forward = _forward
+
         def _backward():
             self.grad += other.data * out.grad
             other.grad += self.data * out.grad
@@ -34,7 +63,11 @@ class Value:
 
     def __pow__(self, other):
         assert isinstance(other, (int, float)), "only supporting int/float powers for now"
-        out = Value(self.data**other, (self,), f'**{other}')
+        out = Value(self.data ** other, (self,), f'**{other}')
+
+        def _forward(**kwds):
+            out.data = self.data ** other
+        out._forward = _forward
 
         def _backward():
             self.grad += (other * self.data**(other-1)) * out.grad
@@ -43,7 +76,11 @@ class Value:
         return out
 
     def relu(self):
-        out = Value(0 if self.data < 0 else self.data, (self,), 'ReLU')
+        out = Value(where(self.data > 0, self.data, 0), (self,), 'ReLU')
+
+        def _forward(**kwds):
+            out.data = where(self.data > 0, self.data, 0)
+        out._forward = _forward
 
         def _backward():
             self.grad += (out.data > 0) * out.grad
@@ -51,22 +88,33 @@ class Value:
 
         return out
 
+    def build_topology(self):
+        # topological order all of the children in the graph
+        if not hasattr(self, 'topo'):
+            self.topo = []
+            visited = set()
+
+            def build_topo(v):
+                if v not in visited:
+                    visited.add(v)
+                    for child in v._prev:
+                        build_topo(child)
+                    self.topo.append(v)
+
+            build_topo(self)
+
+    def forward(self, **kwds):
+
+        self.build_topology()
+        for v in self.topo:
+            v._forward(**kwds)
+
     def backward(self):
 
-        # topological order all of the children in the graph
-        topo = []
-        visited = set()
-        def build_topo(v):
-            if v not in visited:
-                visited.add(v)
-                for child in v._prev:
-                    build_topo(child)
-                topo.append(v)
-        build_topo(self)
-
+        self.build_topology()
         # go one variable at a time and apply the chain rule to get its gradient
         self.grad = 1
-        for v in reversed(topo):
+        for v in reversed(self.topo):
             v._backward()
 
     def __neg__(self): # -self
