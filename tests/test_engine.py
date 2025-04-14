@@ -14,19 +14,10 @@ class AutodiffTest(TestCase):
         y.backward()
         xmg, ymg = x, y
 
-        x = torch.Tensor([-4.0]).double()
-        x.requires_grad = True
-        z = 2 * x + 2 + x
-        q = z.relu() + z * x
-        h = (z * z).relu()
-        y = h + q + q * x
-        y.backward()
-        xpt, ypt = x, y
-
-        # forward pass went well
-        self.assertTrue(ymg.data == ypt.data.item())
-        # backward pass went well
-        self.assertTrue(xmg.grad == xpt.grad.item())
+        self.assertTrue(isclose(xmg.data, -4))
+        self.assertTrue(isclose(xmg.grad, 46))
+        self.assertTrue(isclose(ymg.data, -20))
+        self.assertTrue(isclose(ymg.grad, 1))
 
     def test_more_ops(self):
 
@@ -45,26 +36,9 @@ class AutodiffTest(TestCase):
         g.backward()
         amg, bmg, gmg = a, b, g
 
-        a = torch.Tensor([-4.0]).double()
-        b = torch.Tensor([2.0]).double()
-        a.requires_grad = True
-        b.requires_grad = True
-        c = a + b
-        d = a * b + b**3
-        c = c + c + 1
-        c = c + 1 + c + (-a)
-        d = d + d * 2 + (b + a).relu()
-        d = d + 3 * d + (b - a).relu()
-        e = c - d
-        f = e**2
-        g = f / 2.0
-        g = g + 10.0 / f
-        g.backward()
-        apt, bpt, gpt = a, b, g
-
-        tol = 1e-6
-        # forward pass went well
-        self.assertTrue(abs(gmg.data - gpt.data.item()) < tol)
-        # backward pass went well
-        self.assertTrue(abs(amg.grad - apt.grad.item()) < tol)
-        self.assertTrue(abs(bmg.grad - bpt.grad.item()) < tol)
+        self.assertTrue(isclose(amg.data, -4))
+        self.assertTrue(isclose(amg.grad, 138.83381924))
+        self.assertTrue(isclose(bmg.data, 2))
+        self.assertTrue(isclose(bmg.grad, 645.57725947))
+        self.assertTrue(isclose(gmg.data, 24.704081632))
+        self.assertTrue(isclose(gmg.grad, 1))
