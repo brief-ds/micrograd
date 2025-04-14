@@ -1,5 +1,5 @@
 
-from numpy import zeros, shape as get_shape, where, sum as npsum, ndarray
+from numpy import ones, zeros, shape as get_shape, where, sum as npsum, ndarray
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -40,8 +40,14 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            self.grad += out.grad
-            other.grad += out.grad
+            if self.shape == ():
+                self.grad += npsum(out.grad)
+            else:
+                self.grad += out.grad
+            if other.shape == ():
+                other.grad += npsum(out.grad)
+            else:
+                other.grad += out.grad
         out._backward = _backward
 
         return out
@@ -55,8 +61,14 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            self.grad += other.data * out.grad
-            other.grad += self.data * out.grad
+            if self.shape == ():
+                self.grad += npsum(other.data * out.grad)
+            else:
+                self.grad += other.data * out.grad
+            if other.shape == ():
+                other.grad += npsum(self.data * out.grad)
+            else:
+                other.grad += self.data * out.grad
         out._backward = _backward
 
         return out
@@ -113,7 +125,7 @@ class Value:
 
         self.build_topology()
         # go one variable at a time and apply the chain rule to get its gradient
-        self.grad = 1
+        self.grad = ones(self.shape)
         for v in reversed(self.topo):
             v._backward()
 

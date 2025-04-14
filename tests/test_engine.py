@@ -12,11 +12,10 @@ class AutodiffTest(TestCase):
         c.forward(a=array([-3, 1]), b=array([2, 3]))
         self.assertTrue(allclose(c.data, [0, 27]))
 
-        #c.backward()
-        #print(c.grad)
-        #print(a.grad)
-        #print(b.grad)
-        #self.assertTrue(0)
+        c.backward()
+        self.assertTrue(allclose(a.grad, [0, 9]))
+        self.assertTrue(allclose(b.grad, [0, 18]))
+        self.assertTrue(allclose(c.grad, [1, 1]))
 
     def test_sanity_check(self):
 
