@@ -1,6 +1,6 @@
 
-from numpy import (ndarray, nan, ones, zeros, shape as get_shape, where,
-                   sum as npsum, mean, log1p)
+from numpy import (ndarray, nan, ones, zeros, full, shape as get_shape,
+                   where, sum as npsum, mean, log1p)
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -19,8 +19,8 @@ class Value:
             assert shape is not None
             self.name = name
             self.shape = shape
-            self.data = zeros(self.shape)
-        self.grad = zeros(self.shape)
+            self.data = full(self.shape, nan)
+        self.grad = None
         # internal variables used for autograd graph construction
         self._backward = lambda: None
         self._prev = set(_children)
