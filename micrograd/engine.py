@@ -88,6 +88,20 @@ class Value:
 
         return out
 
+    @property
+    def T(self):
+        out = Value(self.data.T, (self,), 'T')
+
+        def _forward(**kwds):
+            out.data = self.data.T
+        out._forward = _forward
+
+        def _backward():
+            self.grad += out.grad.T
+        out._backward = _backward
+
+        return out
+
     def relu(self):
         out = Value(where(self.data > 0, self.data, 0), (self,), 'ReLU')
 

@@ -27,6 +27,12 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(d.data, [nan, 1.38629436], equal_nan=True))
         self.assertTrue(allclose(a.grad, [nan, 0.25], equal_nan=True))
 
+        f = Value(shape=(2, 1), name='f')
+        g = f.T ** 2
+        g.forward(f=array([[2], [-1]]))
+        g.backward()
+        self.assertTrue(allclose(f.grad, [[4], [-2]]))
+
     def test_sanity_check(self):
 
         a = Value(shape=(2,), name='a')
