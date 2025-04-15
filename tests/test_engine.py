@@ -1,6 +1,6 @@
 from unittest import TestCase
 from micrograd.engine import Value
-from numpy import array, isclose, allclose
+from numpy import array, isclose, allclose, nan
 
 class AutodiffTest(TestCase):
 
@@ -10,15 +10,31 @@ class AutodiffTest(TestCase):
         b = Value(shape=(2,), name='b')
         c = (a + 2).relu() * b ** 2
         c.forward(a=array([-3, 1]), b=array([2, 3]))
-        self.assertTrue(allclose(c.data, [0, 27]))
-
         c.backward()
+        self.assertTrue(allclose(c.data, [0, 27]))
         self.assertTrue(allclose(a.grad, [0, 9]))
         self.assertTrue(allclose(b.grad, [0, 18]))
         self.assertTrue(allclose(c.grad, [1, 1]))
 
+        d = a.log1p()
+        d.forward(a=array([2, 3]))
+        d.backward()
+        self.assertTrue(allclose(d.data, [1.09861229, 1.38629436]))
+        self.assertTrue(allclose(a.grad, [0.33333333, 0.25]))
+
+        d.forward(a=array([-2, 3]))
+        d.backward()
+        self.assertTrue(allclose(d.data, [nan, 1.38629436], equal_nan=True))
+        self.assertTrue(allclose(a.grad, [nan, 0.25], equal_nan=True))
+
     def test_sanity_check(self):
 
+        a = Value(shape=(2,), name='a')
+        a.forward(a=array([2, 3]))
+        a.backward()
+        self.assertTrue(allclose(a.grad, [1, 1]))
+
+    def test_ops(self):
         x = Value(-4.0)
         z = 2 * x + 2 + x
         q = z.relu() + z * x

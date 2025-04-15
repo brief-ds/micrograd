@@ -1,5 +1,6 @@
 
-from numpy import ones, zeros, shape as get_shape, where, sum as npsum, ndarray
+from numpy import (ndarray, nan, ones, zeros, shape as get_shape, where,
+                   sum as npsum, mean, log1p)
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -100,6 +101,20 @@ class Value:
 
         return out
 
+    def log1p(self):
+        out = Value(log1p(self.data), (self,), 'log1p')
+
+        def _forward(**kwds):
+            out.data = log1p(self.data)
+        out._forward = _forward
+
+        def _backward():
+            valid_data = where(self.data >= 0, self.data, nan)
+            self.grad += 1 / (1 + valid_data) * out.grad
+        out._backward = _backward
+
+        return out
+
     def build_topology(self):
         # topological order all of the children in the graph
         if not hasattr(self, 'topo'):
@@ -125,7 +140,8 @@ class Value:
 
         self.build_topology()
         # go one variable at a time and apply the chain rule to get its gradient
-        self.grad = ones(self.shape)
+        for v in self.topo:
+            v.grad = ones(self.shape) if v == self else zeros(v.shape)
         for v in reversed(self.topo):
             v._backward()
 
