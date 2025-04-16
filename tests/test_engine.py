@@ -4,8 +4,15 @@ from numpy import array, isclose, allclose, nan, inf
 
 class AutodiffTest(TestCase):
 
-    def test_basic(self):
+    def test_sanity_check(self):
 
+        a = Value(shape=(2,), name='a')
+        a.forward(a=array([2, 3]))
+        a.backward()
+        self.assertTrue(allclose(a.grad, [1, 1]))
+
+    def test_basic(self):
+        # test arithmetic, relu
         a = Value(shape=(2,), name='a')
         b = Value(shape=(2,), name='b')
         c = (a + 2).relu() * b ** 2
@@ -16,6 +23,7 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(b.grad, [0, 18]))
         self.assertTrue(allclose(c.grad, [1, 1]))
 
+        # test log1p
         d = a.log1p()
         d.forward(a=array([2, 3]))
         d.backward()
@@ -27,12 +35,16 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(d.data, [nan, 1.38629436], equal_nan=True))
         self.assertTrue(allclose(a.grad, [nan, 0.25], equal_nan=True))
 
+        # test transpose
         f = Value(shape=(2, 1), name='f')
         g = f.T ** 2
         g.forward(f=array([[2], [-1]]))
         g.backward()
         self.assertTrue(allclose(f.grad, [[4], [-2]]))
 
+        # TODO: add test of inner product
+
+        # test arctanh
         h = Value(shape=(5,), name='h')
         k = (h * 2).arctanh()
         k.forward(h=array([-1, -.5, 0, .5, 1]))
@@ -40,12 +52,35 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(h.grad, [nan, inf, 2, inf, nan],
                                  equal_nan=True))
 
-    def test_sanity_check(self):
+    def test_reduce_ops(self):
 
-        a = Value(shape=(2,), name='a')
-        a.forward(a=array([2, 3]))
-        a.backward()
-        self.assertTrue(allclose(a.grad, [1, 1]))
+        a = Value(shape=(2, 2, 3), name='a')
+        b = (a.sum(axis=(0, 2)) - 31).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(b.data, [0, 17]))
+        self.assertTrue(allclose(a.grad, [[[0, 0, 0], [1, 1, 1]],
+                                          [[0, 0, 0], [1, 1, 1]]]))
+
+        b = (a.sum(axis=0) - 10).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(a.grad, [[[0, 0, 1], [1, 1, 1]],
+                                          [[0, 0, 1], [1, 1, 1]]]))
+
+        b = (a.sum() - 77).relu()
+        c = (a.sum() - 79).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(a.grad, 1))
+
+        c.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        c.backward()
+        self.assertTrue(allclose(a.grad, 0))
 
     def test_ops(self):
         x = Value(-4.0)

@@ -1,7 +1,8 @@
 
 from numpy import (ndarray, nan, ones, zeros, full,
                    shape as get_shape, where, sum as npsum, mean,
-                   log1p, arctanh)
+                   log1p, arctanh, broadcast_arrays, expand_dims)
+from numbers import Number
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -9,7 +10,7 @@ class Value:
     def __init__(self, data=None, _children=(), _op='',
                  shape=None, name=None):
         if data is not None:
-            assert isinstance(data, (ndarray, float, int))
+            assert isinstance(data, (ndarray, Number))
             assert name is None
             assert shape is None
             self.data = data
@@ -141,6 +142,32 @@ class Value:
             arctanh_grad = 1 / (1 - self.data ** 2)
             arctanh_grad = where(arctanh_grad >= 1, arctanh_grad, nan)
             self.grad += arctanh_grad * out.grad
+        out._backward = _backward
+
+        return out
+
+    def sum(self, axis=None):
+        out = Value(npsum(self.data, axis=axis), (self,), 'sum')
+
+        if axis is None:
+            new_shape = self.shape
+        elif isinstance(axis, int):
+            new_shape = [h if j == axis else 1
+                         for j, h in enumerate(self.shape)]
+        else:
+            new_shape = [h if j in axis else 1
+                         for j, h in enumerate(self.shape)]
+        m_new = ones(new_shape)
+
+        expand_axis = list(range(self.data.ndim)) if axis is None else axis
+
+        def _forward(**kwds):
+            out.data = npsum(self.data, axis=axis)
+        out._forward = _forward
+
+        def _backward():
+            self.grad += broadcast_arrays(expand_dims(out.grad, expand_axis),
+                                          m_new)[0]
         out._backward = _backward
 
         return out
