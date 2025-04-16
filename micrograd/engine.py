@@ -1,6 +1,7 @@
 
-from numpy import (ndarray, nan, ones, zeros, full, shape as get_shape,
-                   where, sum as npsum, mean, log1p)
+from numpy import (ndarray, nan, ones, zeros, full,
+                   shape as get_shape, where, sum as npsum, mean,
+                   log1p, arctanh)
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -125,6 +126,21 @@ class Value:
         def _backward():
             valid_data = where(self.data >= 0, self.data, nan)
             self.grad += 1 / (1 + valid_data) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def arctanh(self):
+        out = Value(arctanh(self.data), (self,), 'arctanh')
+
+        def _forward(**kwds):
+            out.data = arctanh(self.data)
+        out._forward = _forward
+
+        def _backward():
+            arctanh_grad = 1 / (1 - self.data ** 2)
+            arctanh_grad = where(arctanh_grad >= 1, arctanh_grad, nan)
+            self.grad += arctanh_grad * out.grad
         out._backward = _backward
 
         return out

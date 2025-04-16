@@ -1,6 +1,6 @@
 from unittest import TestCase
 from micrograd.engine import Value
-from numpy import array, isclose, allclose, nan
+from numpy import array, isclose, allclose, nan, inf
 
 class AutodiffTest(TestCase):
 
@@ -32,6 +32,13 @@ class AutodiffTest(TestCase):
         g.forward(f=array([[2], [-1]]))
         g.backward()
         self.assertTrue(allclose(f.grad, [[4], [-2]]))
+
+        h = Value(shape=(5,), name='h')
+        k = (h * 2).arctanh()
+        k.forward(h=array([-1, -.5, 0, .5, 1]))
+        k.backward()
+        self.assertTrue(allclose(h.grad, [nan, inf, 2, inf, nan],
+                                 equal_nan=True))
 
     def test_sanity_check(self):
 
