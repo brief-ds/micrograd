@@ -1,7 +1,7 @@
 
-from numpy import (ndarray, nan, ones, zeros, full,
+from numpy import (array, ndarray, nan, ones, zeros, full,
                    shape as get_shape, where, sum as npsum, mean,
-                   log1p, arctanh, broadcast_arrays, expand_dims)
+                   log1p, arctanh, broadcast_arrays, expand_dims, prod)
 from numbers import Number
 from warnings import warn
 
@@ -176,6 +176,17 @@ class Value:
         out._backward = _backward
 
         return out
+
+    def mean(self, axis=None):
+        shape_arr = array(self.shape)
+        if axis is None:
+            denom = prod(shape_arr)
+        elif isinstance(axis, int):
+            denom = shape_arr[axis]
+        else:
+            denom = prod(shape_arr[list(axis)])
+
+        return self.sum(axis) * (1 / denom)
 
     def build_topology(self):
         # topological order all of the children in the graph

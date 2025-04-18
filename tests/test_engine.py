@@ -42,8 +42,6 @@ class AutodiffTest(TestCase):
         g.backward()
         self.assertTrue(allclose(f.grad, [[4], [-2]]))
 
-        # TODO: add test of inner product
-
         # test arctanh
         h = Value(shape=(5,), name='h')
         k = (h * 2).arctanh()
@@ -52,7 +50,7 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(h.grad, [nan, inf, 2, inf, nan],
                                  equal_nan=True))
 
-    def test_reduce_ops(self):
+    def test_sum_op(self):
 
         a = Value(shape=(2, 2, 3), name='a')
         b = (a.sum(axis=(0, 2)) - 31).relu()
@@ -82,7 +80,40 @@ class AutodiffTest(TestCase):
         c.backward()
         self.assertTrue(allclose(a.grad, 0))
 
-    def test_ops(self):
+    def test_mean_op(self):
+
+        a = Value(shape=(2, 2, 3), name='a')
+        b = (a.mean(axis=(0, 2)) - 6).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = 1 / 6
+        self.assertTrue(allclose(b.data, [0, 2]))
+        self.assertTrue(allclose(a.grad, [[[0, 0, 0], [y, y, y]],
+                                          [[0, 0, 0], [y, y, y]]]))
+
+        b = (a.mean(axis=0) - 5).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = .5
+        self.assertTrue(allclose(a.grad, [[[0, 0, y], [y, y, y]],
+                                          [[0, 0, y], [y, y, y]]]))
+
+        b = (a.mean() - 6).relu()
+        c = (a.mean() - 7).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = 1 / 12
+        self.assertTrue(allclose(a.grad, y))
+
+        c.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        c.backward()
+        self.assertTrue(allclose(a.grad, 0))
+
+    def test_chain_ops(self):
         x = Value(-4.0)
         z = 2 * x + 2 + x
         q = z.relu() + z * x
