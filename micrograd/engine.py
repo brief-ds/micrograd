@@ -3,6 +3,7 @@ from numpy import (ndarray, nan, ones, zeros, full,
                    shape as get_shape, where, sum as npsum, mean,
                    log1p, arctanh, broadcast_arrays, expand_dims)
 from numbers import Number
+from warnings import warn
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -30,8 +31,12 @@ class Value:
 
         def _forward(**kwds):
             if self.name:
-                assert get_shape(kwds[self.name]) == self.shape
-                self.data = kwds[self.name]
+                if self.name in kwds:
+                    assert get_shape(kwds[self.name]) == self.shape
+                    self.data = kwds[self.name]
+                else:
+                    warn(f'{self.name} not in input data')
+                    self.data = full(self.shape, nan)
         self._forward = _forward
 
     def __add__(self, other):
