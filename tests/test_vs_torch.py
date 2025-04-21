@@ -1,7 +1,8 @@
 from unittest import TestCase
-from micrograd import Value
-from torch import Tensor
+from micrograd import Value, tensordot
+from torch import Tensor, tensordot as torch_tensordot
 from numpy import array, allclose
+import numpy.random
 
 class AutodiffTest(TestCase):
 
@@ -93,7 +94,54 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(a.grad, a2.grad))
 
     def test_tensordot(self):
-        pass
+
+        m1 = numpy.random.rand(2, 3, 4)
+        m2 = numpy.random.rand(4, 3, 5)
+
+        a = Value(m1)
+        b = Value(m2)
+        c = tensordot(a, b, 1).sum()
+
+        a2 = Tensor(m1)
+        a2.requires_grad = True
+        b2 = Tensor(m2)
+        b2.requires_grad = True
+        c2 = torch_tensordot(a2, b2, 1).sum()
+
+        c.backward()
+        c2.backward()
+        self.assertTrue(allclose(c.data, c2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+        self.assertTrue(allclose(b.grad, b2.grad))
+
+        c = tensordot(a, b, 2).sum()
+        a2.grad = None
+        b2.grad = None
+        c2 = torch_tensordot(a2, b2, ([-1, -2], [0, 1])).sum()
+        c.backward()
+        c2.backward()
+        self.assertTrue(allclose(c.data, c2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+        self.assertTrue(allclose(b.grad, b2.grad))
+
+        v1 = numpy.random.rand(2)
+        v2 = numpy.random.rand(3)
+
+        a = Value(v1)
+        b = Value(v2)
+        c = tensordot(a, b, 0).sum()
+
+        a2 = Tensor(v1)
+        a2.requires_grad = True
+        b2 = Tensor(v2)
+        b2.requires_grad = True
+        c2 = torch_tensordot(a2, b2, 0).sum()
+
+        c.backward()
+        c2.backward()
+        self.assertTrue(allclose(c.data, c2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+        self.assertTrue(allclose(b.grad, b2.grad))
 
     def test_reduce_ops(self):
 
