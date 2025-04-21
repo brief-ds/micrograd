@@ -26,6 +26,8 @@ print(a)      # Value(data=..., grad=[[0. 0.], [1. -1.]])
 print(b)      # Value(data=..., grad=[5. 4.])
 ```
 
+PyTorch requires any expression to be derived with respect to variables to yield a scalar. micrograd relaxes it: it starts with an all-ones tensor of the shape of the expression's result, as if rewriting the quantity to be derived as the sum of each element of the expression's original result.
+
 ## Lazy evaluation
 When defining a tensor, one may just indicate `shape` and `name`, and later on provide the value.
 

@@ -71,6 +71,7 @@ class AutodiffTest(TestCase):
         self.assertTrue(abs(bmg.grad - bpt.grad.item()) < tol)
 
     def test_unary_ops(self):
+
         a = Value(array([.3, .8]))
         b = a.tanh().log1p().sum()
         c = a.arctanh().log().sum()
@@ -93,3 +94,27 @@ class AutodiffTest(TestCase):
 
     def test_tensordot(self):
         pass
+
+    def test_reduce_ops(self):
+
+        a = Value(array([[[1, 2, -2], [2, 1, 0]],
+                         [[-2, 1, 0], [3, 2, 1]]]))
+        b = a.mean(axis=(0, 2)).relu().sum()
+        c = a.mean(axis=(0, 1)).relu().mean()
+
+        a2 = Tensor([[[1, 2, -2], [2, 1, 0]],
+                     [[-2, 1, 0], [3, 2, 1]]])
+        a2.requires_grad = True
+        b2 = a2.mean(axis=(0, 2)).relu().sum()
+        c2 = a2.mean(axis=(0, 1)).relu().mean()
+
+        b.backward()
+        b2.backward()
+        self.assertTrue(allclose(b.data, b2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+
+        a2.grad = None
+        c.backward()
+        c2.backward()
+        self.assertTrue(allclose(c.data, c2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
