@@ -49,6 +49,13 @@ class AutodiffTest(TestCase):
         g.backward()
         self.assertTrue(allclose(f.grad, [[4], [-2]]))
 
+        # test tanh
+        k = a.tanh()
+        k.forward(a=array([0, 2]))
+        k.backward()
+        self.assertTrue(allclose(k.data, [0., 0.96402758]))
+        self.assertTrue(allclose(a.grad, [1., 0.07065082]))
+
         # test arctanh
         h = Value(shape=(5,), name='h')
         k = (h * 2).arctanh()

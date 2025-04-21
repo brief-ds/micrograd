@@ -1,7 +1,8 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
                    shape as get_shape, where, sum as npsum,
-                   log, log1p, arctanh, broadcast_arrays, expand_dims,
+                   log, log1p, tanh, arctanh,
+                   broadcast_arrays, expand_dims,
                    prod, tensordot, isnan, all as npall)
 from numbers import Number
 from warnings import warn
@@ -161,6 +162,19 @@ class Value:
 
         return out
 
+    def tanh(self):
+        out = Value(tanh(self.data), (self,), 'tanh')
+
+        def _forward(**kwds):
+            out.data = tanh(self.data)
+        out._forward = _forward
+
+        def _backward():
+            self.grad += (1 - tanh(self.data) ** 2) * out.grad
+        out._backward = _backward
+
+        return out
+
     def arctanh(self):
         out = Value(arctanh(self.data), (self,), 'arctanh')
 
@@ -226,11 +240,11 @@ class Value:
         axis of the right tensor; so on and so forth.
         '''
         assert axes >= 0          # only int axes
-        axes1 = [[-1 - j for j in range(axes)], list(range(axes))]
-        axes2 = [[-1 - j for j in range(self.ndim - axes)],
-                 list(range(self.ndim - axes))]
-        axes3 = [[-1 - j for j in range(other.ndim - axes)],
-                 list(range(other.ndim - axes))]
+        axes1 = ([-1 - j for j in range(axes)], list(range(axes)))
+        axes2 = ([-1 - j for j in range(self.ndim - axes)],
+                 list(range(self.ndim - axes)))
+        axes3 = ([-1 - j for j in range(other.ndim - axes)],
+                 list(range(other.ndim - axes)))
 
         other = (other if isinstance(other, Value)
                  else Value(other, _op='c'))

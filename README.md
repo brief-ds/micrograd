@@ -60,6 +60,7 @@ The operator dependency topology computation is only calculated once then cached
 * `relu`
 * `log`
 * `log1p`
+* `tanh`
 * `arctanh`
 * `T` for transpose
 * `sum`
