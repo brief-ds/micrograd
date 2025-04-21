@@ -1,5 +1,5 @@
 from unittest import TestCase
-from micrograd.engine import Value
+from micrograd import Value, tensordot
 from numpy import array, isclose, allclose, nan, inf, empty
 
 class AutodiffTest(TestCase):
@@ -133,17 +133,17 @@ class AutodiffTest(TestCase):
 
         a = Value(empty((2, 3, 4)))
         b = Value(empty((4, 3, 5)))
-        c = a.tensordot(b, 1)
+        c = tensordot(a, b, 1)
         c.backward()
         self.assertTrue(allclose(c.shape, (2, 3, 3, 5)))
 
-        c = a.tensordot(b, 2)
+        c = tensordot(a, b, 2)
         c.backward()
         self.assertTrue(allclose(c.shape, (2, 5)))
 
         a = Value(empty((2,)))
         b = Value(empty((3,)))
-        c = a.tensordot(b, 0)
+        c = tensordot(a, b, 0)
         c.backward()
         self.assertTrue(allclose(c.shape, (2, 3)))
 

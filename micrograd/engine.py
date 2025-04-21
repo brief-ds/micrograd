@@ -1,9 +1,10 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
-                   shape as get_shape, where, sum as npsum,
+                   shape as _shape, where, sum as _sum,
                    log, log1p, tanh, arctanh,
                    broadcast_arrays, expand_dims,
-                   prod, tensordot, isnan, all as npall)
+                   prod, tensordot as _tensordot,
+                   isnan, all as npall)
 from numbers import Number
 from warnings import warn
 
@@ -18,7 +19,7 @@ class Value:
             assert shape is None, "data provided, no need for shape"
             self.data = data
             self.name = None
-            self.shape = get_shape(data)
+            self.shape = _shape(data)
         else:
             assert name, "data not provided, name must be given"
             assert shape is not None, "data not provided, shape must be given"
@@ -36,7 +37,7 @@ class Value:
                 if self.name in kwds:
                     _value = kwds[self.name]
                     assert isinstance(_value, (ndarray, Number))
-                    assert get_shape(_value) == self.shape
+                    assert _shape(_value) == self.shape
                     self.data = _value
                 else:
                     warn(f'{self.name} not in input data')
@@ -54,11 +55,11 @@ class Value:
 
         def _backward():
             if self.shape == ():
-                self.grad += npsum(out.grad)
+                self.grad += _sum(out.grad)
             else:
                 self.grad += out.grad
             if other.shape == ():
-                other.grad += npsum(out.grad)
+                other.grad += _sum(out.grad)
             else:
                 other.grad += out.grad
         out._backward = _backward
@@ -76,11 +77,11 @@ class Value:
 
         def _backward():
             if self.shape == ():
-                self.grad += npsum(other.data * out.grad)
+                self.grad += _sum(other.data * out.grad)
             else:
                 self.grad += other.data * out.grad
             if other.shape == ():
-                other.grad += npsum(self.data * out.grad)
+                other.grad += _sum(self.data * out.grad)
             else:
                 other.grad += self.data * out.grad
         out._backward = _backward
@@ -191,7 +192,7 @@ class Value:
         return out
 
     def sum(self, axis=None):
-        out = Value(npsum(self.data, axis=axis), (self,), 'sum')
+        out = Value(_sum(self.data, axis=axis), (self,), 'sum')
 
         if axis is None:
             new_shape = self.shape
@@ -206,7 +207,7 @@ class Value:
         expand_axis = tuple(range(self.data.ndim)) if axis is None else axis
 
         def _forward(**kwds):
-            out.data = npsum(self.data, axis=axis)
+            out.data = _sum(self.data, axis=axis)
         out._forward = _forward
 
         def _backward():
@@ -226,41 +227,6 @@ class Value:
             denom = prod(shape_arr[list(axis)])
 
         return self.sum(axis) * (1 / denom)
-
-    def tensordot(self, other, axes):
-        ''' Tensor contraction, only accepting int axes
-
-        Example use:
-
-            left.tensordot(right, axes=2)
-
-        Unlike numpy tensordot, the last axis (indexed by -1) of the left
-        tensor contracts with the first axis of the right tensor; the
-        next to last axis (indexed by -2) of the left tensor with the 2nd
-        axis of the right tensor; so on and so forth.
-        '''
-        assert axes >= 0          # only int axes
-        axes1 = ([-1 - j for j in range(axes)], list(range(axes)))
-        axes2 = ([-1 - j for j in range(self.ndim - axes)],
-                 list(range(self.ndim - axes)))
-        axes3 = ([-1 - j for j in range(other.ndim - axes)],
-                 list(range(other.ndim - axes)))
-
-        other = (other if isinstance(other, Value)
-                 else Value(other, _op='c'))
-        out = Value(tensordot(self.data, other.data, axes=axes1),
-                    (self, other), '@')
-
-        def _forward(**kwds):
-            out.data = tensordot(self.data, other.data, axes=axes1)
-        out._forward = _forward
-
-        def _backward():
-            self.grad += tensordot(out.grad, other.data.T, axes=axes3)
-            other.grad += tensordot(self.data.T, out.grad, axes=axes2)
-        out._backward = _backward
-
-        return out
 
     def build_topology(self):
         # topological order all of the children in the graph
@@ -317,7 +283,45 @@ class Value:
         return other * self**-1
 
     def __matmul__(self, other):
-        return self.tensordot(other, 1)
+        return tensordot(self, other, 1)
 
     def __repr__(self):
         return f"Value(data={self.data}, grad={self.grad})"
+
+
+def tensordot(left, right, axes):
+    ''' Tensor contraction, only accepting int axes
+
+    Example use:
+
+        tensordot(left, right, axes=2)
+
+    Unlike numpy tensordot, the last axis (indexed by -1) of the left
+    tensor contracts with the first axis of the right tensor; the
+    next to last axis (indexed by -2) of the left tensor with the 2nd
+    axis of the right tensor; so on and so forth.
+    '''
+    assert axes >= 0          # only int axes
+    axes1 = ([-1 - j for j in range(axes)], list(range(axes)))
+    axes2 = ([-1 - j for j in range(left.ndim - axes)],
+             list(range(left.ndim - axes)))
+    axes3 = ([-1 - j for j in range(right.ndim - axes)],
+             list(range(right.ndim - axes)))
+
+    left = (left if isinstance(left, Value)
+            else Value(left, _op='c'))
+    right = (right if isinstance(right, Value)
+             else Value(right, _op='c'))
+    out = Value(_tensordot(left.data, right.data, axes=axes1),
+                (left, right), '@')
+
+    def _forward(**kwds):
+        out.data = _tensordot(left.data, right.data, axes=axes1)
+    out._forward = _forward
+
+    def _backward():
+        left.grad += _tensordot(out.grad, right.data.T, axes=axes3)
+        right.grad += _tensordot(left.data.T, out.grad, axes=axes2)
+    out._backward = _backward
+
+    return out
