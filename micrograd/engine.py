@@ -1,7 +1,7 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
                    shape as get_shape, where, sum as npsum,
-                   log1p, arctanh, broadcast_arrays, expand_dims,
+                   log, log1p, arctanh, broadcast_arrays, expand_dims,
                    prod, tensordot, isnan, all as npall)
 from numbers import Number
 from warnings import warn
@@ -133,6 +133,20 @@ class Value:
 
         return out
 
+    def log(self):
+        out = Value(log(self.data), (self,), 'log')
+
+        def _forward(**kwds):
+            out.data = log(self.data)
+        out._forward = _forward
+
+        def _backward(**kwds):
+            valid_data = where(self.data >= 0, self.data, nan)
+            self.grad += 1 / valid_data * out.grad
+        out._backward = _backward
+
+        return out
+
     def log1p(self):
         out = Value(log1p(self.data), (self,), 'log1p')
 
@@ -141,7 +155,7 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            valid_data = where(self.data >= 0, self.data, nan)
+            valid_data = where(self.data >= -1, self.data, nan)
             self.grad += 1 / (1 + valid_data) * out.grad
         out._backward = _backward
 
