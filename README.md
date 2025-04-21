@@ -50,6 +50,8 @@ x.backward()
 
 Each time the `forward()` is called (e.g. for minibatch evaluation), the lazily defined variables have to be fed values in the function signature. Otherwise, it will take all `nan` as value. The final result will likely be `nan` to signal missing values for some variables.
 
+If an expression has no lazy variables at all, `forward()` call is not necessary. Once defined, the expression is evaluated.
+
 ## Efficient operator dependency topology computation
 The operator dependency topology computation is only calculated once then cached, supposing the topology is static once a variable is defined.
 
@@ -85,7 +87,7 @@ dot = draw_dot(y)
 ![2d neuron](assets/gout.svg)
 
 ## Running tests
-To run the unit tests:
+The following line uses the built-in `unittest` module to run the unit tests. But to run `tests/test_vs_torch.py` it requires PyTorch. One could create a separate virtual environment for test, as PyTorch may require downgrade of NumPy to version 1.
 
 ```bash
 python -m unittest tests/*.py
