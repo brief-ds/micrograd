@@ -62,7 +62,7 @@ If an expression has no lazy variables at all, `forward()` call is not necessary
 Inside the `backward()` call, all the derivatives are initialised zero other than the final one to be initialised all-one, before the chain derivation. So no `zero_grad()` is necessary or defined anywhere.
 
 ## Efficient operator dependency topology computation
-The operator dependency topology computation is only calculated once then cached, supposing the topology is static once a variable is defined.
+The operator dependency topology is only calculated once then cached, supposing the topology is *static* once an expression is defined.
 
 ## Supported operators
 * `__pow__`
