@@ -47,7 +47,8 @@ c.forward(var1=array([[2, 3], [5, 4]]),
 c.backward()
 ```
 
-The **essential pattern** is to call `forward()` once with the values for the varialbes, then `backward()` once for the mathematical derivatives.
+## Essential Use Pattern
+Call `forward()` once with the values for the varialbes, then `backward()` once for the mathematical derivatives.
 
 ```python
 x.forward(var1=value1, var2=value2, ...)
@@ -57,6 +58,8 @@ x.backward()
 Each time the `forward()` is called (e.g. for minibatch evaluation), the lazily defined variables have to be fed values in the function signature. Otherwise, it will take all `nan` as value. The final result will likely be `nan` to signal missing values for some variables.
 
 If an expression has no lazy variables at all, `forward()` call is not necessary. Once defined, the expression is evaluated.
+
+Inside the `backward()` call, all the derivatives are initialised zero other than the final one to be initialised all-one, before the chain derivation. So no `zero_grad()` is necessary or defined anywhere.
 
 ## Efficient operator dependency topology computation
 The operator dependency topology computation is only calculated once then cached, supposing the topology is static once a variable is defined.
