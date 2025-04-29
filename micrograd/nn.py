@@ -1,4 +1,4 @@
-import random
+import numpy.random
 from micrograd.engine import Value
 
 class Module:
@@ -8,8 +8,8 @@ class Module:
 
 class Neuron(Module):
 
-    def __init__(self, nin, nonlin=True):
-        self.w = [Value(random.uniform(-1,1)) for _ in range(nin)]
+    def __init__(self, nin, nonlin=True, values=None):
+        self.w = [Value(_) for _ in values]
         self.b = Value(0)
         self.nonlin = nonlin
 
@@ -26,7 +26,8 @@ class Neuron(Module):
 class Layer(Module):
 
     def __init__(self, nin, nout, **kwargs):
-        self.neurons = [Neuron(nin, **kwargs) for _ in range(nout)]
+        values = numpy.random.uniform(-1, 1, (nin, nout))
+        self.neurons = [Neuron(nin, values=v, **kwargs) for v in values.T]
 
     def __call__(self, x):
         out = [n(x) for n in self.neurons]
@@ -37,6 +38,13 @@ class Layer(Module):
 
     def __repr__(self):
         return f"Layer of [{', '.join(str(n) for n in self.neurons)}]"
+
+    def L2_norm(self):
+        return sum([p.data ** 2 for p in self.parameters()])
+
+    def grad_L2_norm(self):
+        return sum([p.grad ** 2 for p in self.parameters()
+                    if p.grad is not None])
 
 class MLP(Module):
 
