@@ -1,6 +1,6 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
-                   shape as _shape, where, sum as _sum,
+                   shape as _shape, where,
                    log, log1p, tanh, arctanh,
                    broadcast_arrays, expand_dims,
                    prod, tensordot as _tensordot,
@@ -54,12 +54,14 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            if self.shape == ():
-                self.grad += _sum(out.grad)
+            if self.ndim < out.ndim:
+                self.grad += (out.grad
+                              .sum(axis=tuple(range(out.ndim - self.ndim))))
             else:
                 self.grad += out.grad
-            if other.shape == ():
-                other.grad += _sum(out.grad)
+            if other.ndim < out.ndim:
+                other.grad += (out.grad
+                               .sum(axis=tuple(range(out.ndim - other.ndim))))
             else:
                 other.grad += out.grad
         out._backward = _backward
@@ -76,12 +78,14 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            if self.shape == ():
-                self.grad += _sum(other.data * out.grad)
+            if self.ndim < out.ndim:
+                self.grad += ((other.data * out.grad)
+                              .sum(axis=tuple(range(out.ndim - self.ndim))))
             else:
                 self.grad += other.data * out.grad
-            if other.shape == ():
-                other.grad += _sum(self.data * out.grad)
+            if other.ndim < out.ndim:
+                other.grad += ((self.data * out.grad)
+                               .sum(axis=tuple(range(out.ndim - other.ndim))))
             else:
                 other.grad += self.data * out.grad
         out._backward = _backward
@@ -192,7 +196,11 @@ class Value:
         return out
 
     def sum(self, axis=None):
-        out = Value(_sum(self.data, axis=axis), (self,), 'sum')
+        if self.ndim == 0:
+            assert not axis
+            return self
+
+        out = Value(self.data.sum(axis=axis), (self,), 'sum')
 
         if axis is None:
             new_shape = self.shape
@@ -207,7 +215,7 @@ class Value:
         expand_axis = tuple(range(self.data.ndim)) if axis is None else axis
 
         def _forward(**kwds):
-            out.data = _sum(self.data, axis=axis)
+            out.data = self.data.sum(axis=axis)
         out._forward = _forward
 
         def _backward():
