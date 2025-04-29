@@ -77,8 +77,41 @@ The operator dependency topology is only calculated once then cached, supposing 
 * `sum`
 * `mean`
 
-## Training a neural net
-The notebook `demo.ipynb` provides a full demo of training an 2-layer neural network (MLP) binary classifier. This is achieved by initializing a neural net from `micrograd.nn` module, implementing a simple svm "max-margin" binary classification loss and using SGD for optimization. As shown in the notebook, using a 2-layer neural net with two 16-node hidden layers we achieve the following decision boundary on the moon dataset:
+## Stochastic Gradient Descent
+To be able to implement any SGD algorithm flexibly, the `micrograd.optim.SGD` is designed as
+
+```python
+SGD(target,   # variable to be minimised
+    wrt=[],   # list of variables with respect to which to perform minimisation
+    learning_rate=None,    # a non-negative number or a generator of them
+    <SGD param>,
+    <SGD param>, ...)
+```
+
+When the target variable is not a scalar, the objective function is as if rewritten as the sum of each element in the target tensor. The `learning_rate` can accept a generator implementing a schedule of varying learning rates.
+
+Once initialised, just call `step()` on the optimiser with the minibatch data.
+
+```python
+optimiser = SGD(...)
+
+# batch_iterator yields a dict
+# for the minibatch, e.g.
+#
+#   {'X': .., 'y': ..}
+
+for k in range(..):
+    # one step of gradient descent on all parameters
+    batch_data = next(batch_iterator)
+    optimiser.step(**batch_data)
+
+    # one may now call target.forward(..) for validation
+```
+
+Refer to `micrograd/optim.py` for more detail.
+
+## The Demos
+The notebooks under `demos/` provide a full demo of training an 2-layer neural network (MLP) binary classifier. This is achieved by initializing a neural net from `micrograd.nn` module, implementing a simple svm "max-margin" binary classification loss and using SGD for optimization. As shown in the notebook, using a 2-layer neural net with two 16-node hidden layers we achieve the following decision boundary on the moon dataset:
 
 ![2d neuron](assets/moon_mlp.png)
 
