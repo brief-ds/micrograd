@@ -22,7 +22,7 @@ class Value:
             self.shape = _shape(data)
         else:
             assert name, "data not provided, name must be given"
-            assert shape is not None, "data not provided, shape must be given"
+            assert isinstance(shape, tuple), "shape must be given"
             self.name = name
             self.shape = shape
             self.data = full(self.shape, nan)
