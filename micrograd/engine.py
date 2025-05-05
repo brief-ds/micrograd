@@ -202,17 +202,15 @@ class Value:
 
         out = Value(self.data.sum(axis=axis), (self,), 'sum')
 
+        de_neg = lambda x: self.ndim + x if x < 0 else x
         if axis is None:
-            new_shape = self.shape
+            expand_axis = tuple(range(self.data.ndim))
         elif isinstance(axis, int):
-            new_shape = [h if j == axis else 1
-                         for j, h in enumerate(self.shape)]
+            expand_axis = de_neg(axis)
         else:
-            new_shape = [h if j in axis else 1
-                         for j, h in enumerate(self.shape)]
-        m_new = ones(new_shape)
+            expand_axis = tuple(map(de_neg, axis))
 
-        expand_axis = tuple(range(self.data.ndim)) if axis is None else axis
+        arr_orig_shape = ones(self.shape)
 
         def _forward(**kwds):
             out.data = self.data.sum(axis=axis)
@@ -220,7 +218,7 @@ class Value:
 
         def _backward():
             self.grad += broadcast_arrays(expand_dims(out.grad, expand_axis),
-                                          m_new)[0]
+                                          arr_orig_shape)[0]
         out._backward = _backward
 
         return out

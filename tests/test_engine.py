@@ -94,6 +94,36 @@ class AutodiffTest(TestCase):
         c.backward()
         self.assertTrue(allclose(a.grad, 0))
 
+    def test_sum_op_neg_axis(self):
+
+        a = Value(shape=(2, 2, 3), name='a')
+        b = (a.sum(axis=(0, -1)) - 31).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(b.data, [0, 17]))
+        self.assertTrue(allclose(a.grad, [[[0, 0, 0], [1, 1, 1]],
+                                          [[0, 0, 0], [1, 1, 1]]]))
+
+        b = (a.sum(axis=-3) - 10).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(a.grad, [[[0, 0, 1], [1, 1, 1]],
+                                          [[0, 0, 1], [1, 1, 1]]]))
+
+        b = (a.sum() - 77).relu()
+        c = (a.sum() - 79).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        self.assertTrue(allclose(a.grad, 1))
+
+        c.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        c.backward()
+        self.assertTrue(allclose(a.grad, 0))
+
     def test_mean_op(self):
 
         a = Value(shape=(2, 2, 3), name='a')
@@ -109,6 +139,41 @@ class AutodiffTest(TestCase):
                                           [[0, 0, 0], [y, y, y]]]))
 
         b = (a.mean(axis=0) - 5).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = .5
+        self.assertTrue(allclose(a.grad, [[[0, 0, y], [y, y, y]],
+                                          [[0, 0, y], [y, y, y]]]))
+
+        b = (a.mean() - 6).relu()
+        c = (a.mean() - 7).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = 1 / 12
+        self.assertTrue(allclose(a.grad, y))
+
+        c.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        c.backward()
+        self.assertTrue(allclose(a.grad, 0))
+
+    def test_mean_op_neg_axis(self):
+
+        a = Value(shape=(2, 2, 3), name='a')
+        self.assertTrue(a.mean()._op == '*')
+
+        b = (a.mean(axis=(0, -1)) - 6).relu()
+        b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
+                           [[7, 8, 9], [10, 11, 12]]]))
+        b.backward()
+        y = 1 / 6
+        self.assertTrue(allclose(b.data, [0, 2]))
+        self.assertTrue(allclose(a.grad, [[[0, 0, 0], [y, y, y]],
+                                          [[0, 0, 0], [y, y, y]]]))
+
+        b = (a.mean(axis=-3) - 5).relu()
         b.forward(a=array([[[1, 2, 3], [4, 5, 6]],
                            [[7, 8, 9], [10, 11, 12]]]))
         b.backward()

@@ -166,3 +166,27 @@ class AutodiffTest(TestCase):
         c2.backward()
         self.assertTrue(allclose(c.data, c2.data))
         self.assertTrue(allclose(a.grad, a2.grad))
+
+    def test_reduce_ops_neg_axis(self):
+
+        a = Value(array([[[1, 2, -2], [2, 1, 0]],
+                         [[-2, 1, 0], [3, 2, 1]]]))
+        b = a.mean(axis=(0, -1)).relu().sum()
+        c = a.mean(axis=(-3, -2)).relu().mean()
+
+        a2 = Tensor([[[1, 2, -2], [2, 1, 0]],
+                     [[-2, 1, 0], [3, 2, 1]]])
+        a2.requires_grad = True
+        b2 = a2.mean(axis=(0, -1)).relu().sum()
+        c2 = a2.mean(axis=(-3, -2)).relu().mean()
+
+        b.backward()
+        b2.backward()
+        self.assertTrue(allclose(b.data, b2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+
+        a2.grad = None
+        c.backward()
+        c2.backward()
+        self.assertTrue(allclose(c.data, c2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
