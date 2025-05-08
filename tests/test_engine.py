@@ -11,7 +11,7 @@ class AutodiffTest(TestCase):
         a.backward()
         self.assertTrue(allclose(a.grad, [1, 1]))
 
-    def test_basic(self):
+    def test_unary_ops(self):
         # test arithmetic, relu
         a = Value(shape=(2,), name='a')
         b = Value(shape=(2,), name='b')
@@ -63,6 +63,43 @@ class AutodiffTest(TestCase):
         k.backward()
         self.assertTrue(allclose(h.grad, [nan, inf, 2, inf, nan],
                                  equal_nan=True))
+
+    def test_unary_ops_scalar_input(self):
+
+        a = Value(shape=(), name='a')
+
+        # test log
+        d = a.log()
+        d.forward(a=3)
+        d.backward()
+        self.assertTrue(allclose(d.data, 1.09861229))
+        self.assertTrue(allclose(a.grad, 1 / 3))
+
+        # test log1p
+        d = a.log1p()
+        d.forward(a=3)
+        d.backward()
+        self.assertTrue(allclose(d.data, 1.38629436))
+        self.assertTrue(allclose(a.grad, 0.25))
+
+        # test transpose
+        g = a.T ** 2
+        g.forward(a=3)
+        g.backward()
+        self.assertTrue(allclose(a.grad, 6))
+
+        # test tanh
+        k = a.tanh()
+        k.forward(a=2)
+        k.backward()
+        self.assertTrue(allclose(k.data, 0.96402758))
+        self.assertTrue(allclose(a.grad, 0.07065082))
+
+        # test arctanh
+        k = (a * 2).arctanh()
+        k.forward(a=.5)
+        k.backward()
+        self.assertTrue(allclose(a.grad, inf))
 
     def test_sum_op(self):
 
@@ -123,6 +160,21 @@ class AutodiffTest(TestCase):
                            [[7, 8, 9], [10, 11, 12]]]))
         c.backward()
         self.assertTrue(allclose(a.grad, 0))
+
+    def test_sum_op_scalar_input(self):
+
+        a = Value(shape=(), name='a')
+        b = (a ** 2).sum()
+        b.forward(a=2.5)
+        b.backward()
+        self.assertTrue(allclose(b.data, 6.25))
+        self.assertTrue(allclose(a.grad, 5))
+
+        b = (a ** 2).sum(axis=())
+        b.forward(a=2.5)
+        b.backward()
+        self.assertTrue(allclose(b.data, 6.25))
+        self.assertTrue(allclose(a.grad, 5))
 
     def test_mean_op(self):
 
@@ -194,6 +246,21 @@ class AutodiffTest(TestCase):
         c.backward()
         self.assertTrue(allclose(a.grad, 0))
 
+    def test_mean_op_scalar_input(self):
+
+        a = Value(shape=(), name='a')
+        b = (a ** 2).mean()
+        b.forward(a=2.5)
+        b.backward()
+        self.assertTrue(allclose(b.data, 6.25))
+        self.assertTrue(allclose(a.grad, 5))
+
+        b = (a ** 2).mean(axis=())
+        b.forward(a=2.5)
+        b.backward()
+        self.assertTrue(allclose(b.data, 6.25))
+        self.assertTrue(allclose(a.grad, 5))
+
     def test_tensordot_op(self):
 
         a = Value(empty((2, 3, 4)))
@@ -220,6 +287,29 @@ class AutodiffTest(TestCase):
         c.backward()
         self.assertTrue(allclose(a.grad, [108, 144]))
         self.assertTrue(allclose(b.grad, [72, 108]))
+
+    def test_tensordot_op_scalar_input(self):
+
+        a = Value(3)
+        b = Value(5)
+        c = tensordot(a, b, 0)
+        c.backward()
+        self.assertTrue(allclose(c.data, 15))
+        self.assertTrue(allclose(a.grad, 5))
+        self.assertTrue(allclose(b.grad, 3))
+
+        f = Value(array([[2, 3], [4, 5]]))
+        g = tensordot(a, f, 0)
+        g.backward()
+        self.assertTrue(allclose(g.data, array([[6, 9], [12, 15]])))
+        self.assertTrue(allclose(a.grad, 14))
+        self.assertTrue(allclose(f.grad, a.data))
+
+        g = tensordot(f - 2, b, 0)
+        g.backward()
+        self.assertTrue(allclose(g.data, array([[0, 5], [10, 15]])))
+        self.assertTrue(allclose(b.grad, 6))
+        self.assertTrue(allclose(f.grad, b.data))
 
     def test_chain_ops(self):
         x = Value(-4.0)

@@ -1,9 +1,9 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
-                   shape as _shape, where,
-                   log, log1p, tanh, arctanh,
+                   shape as _shape, where, take, prod,
+                   log, log1p, tanh, arctanh, transpose,
+                   sum as _sum, tensordot as _tensordot,
                    broadcast_arrays, expand_dims,
-                   prod, tensordot as _tensordot,
                    isnan, all as npall)
 from numbers import Number
 from warnings import warn
@@ -54,6 +54,8 @@ class Value:
         out._forward = _forward
 
         def _backward():
+            # in some cases, the shape of one operand
+            # would have been broadcast to higher dimensions
             if self.ndim < out.ndim:
                 self.grad += (out.grad
                               .sum(axis=tuple(range(out.ndim - self.ndim))))
@@ -78,6 +80,8 @@ class Value:
         out._forward = _forward
 
         def _backward():
+            # in some cases, the shape of one operand
+            # would have been broadcast to higher dimensions
             if self.ndim < out.ndim:
                 self.grad += ((other.data * out.grad)
                               .sum(axis=tuple(range(out.ndim - self.ndim))))
@@ -110,14 +114,14 @@ class Value:
 
     @property
     def T(self):
-        out = Value(self.data.T, (self,), 'T')
+        out = Value(transpose(self.data), (self,), 'T')
 
         def _forward(**kwds):
-            out.data = self.data.T
+            out.data = transpose(self.data)
         out._forward = _forward
 
         def _backward():
-            self.grad += out.grad.T
+            self.grad += transpose(out.grad)
         out._backward = _backward
 
         return out
@@ -188,50 +192,46 @@ class Value:
         out._forward = _forward
 
         def _backward():
-            arctanh_grad = 1 / (1 - self.data ** 2)
-            arctanh_grad = where(arctanh_grad >= 1, arctanh_grad, nan)
-            self.grad += arctanh_grad * out.grad
+            valid_data = where((-1 <= self.data) & (self.data <= 1),
+                               self.data, nan)
+            self.grad += 1 / (1 - valid_data ** 2) * out.grad
         out._backward = _backward
 
         return out
 
     def sum(self, axis=None):
-        if self.ndim == 0:
-            assert not axis
-            return self
-
-        out = Value(self.data.sum(axis=axis), (self,), 'sum')
-
+        # map any negative dimension index to non-negative one
         de_neg = lambda x: self.ndim + x if x < 0 else x
-        if axis is None:
-            expand_axis = tuple(range(self.data.ndim))
-        elif isinstance(axis, int):
-            expand_axis = de_neg(axis)
-        else:
-            expand_axis = tuple(map(de_neg, axis))
 
-        arr_orig_shape = ones(self.shape)
+        if axis is None:
+            _axis = tuple(range(self.ndim))
+        elif isinstance(axis, int):
+            _axis = de_neg(axis)
+        else:
+            _axis = tuple(map(de_neg, axis))
+
+        out = Value(_sum(self.data, axis=axis), (self,), 'sum')
 
         def _forward(**kwds):
-            out.data = self.data.sum(axis=axis)
+            out.data = _sum(self.data, axis=axis)
         out._forward = _forward
 
         def _backward():
-            self.grad += broadcast_arrays(expand_dims(out.grad, expand_axis),
-                                          arr_orig_shape)[0]
+            # expand out.grad to same number of dimensions
+            # as self.data, self.grad
+            _out_grad = expand_dims(out.grad, _axis)
+
+            # ... expand further to same shape as self.data, self.grad
+            self.grad += broadcast_arrays(_out_grad, self.data)[0]
         out._backward = _backward
 
         return out
 
     def mean(self, axis=None):
-        shape_arr = array(self.shape)
         if axis is None:
-            denom = prod(shape_arr)
-        elif isinstance(axis, int):
-            denom = shape_arr[axis]
+            denom = prod(self.shape)
         else:
-            denom = prod(shape_arr[list(axis)])
-
+            denom = prod(take(self.shape, axis))
         return self.sum(axis) * (1 / denom)
 
     def build_topology(self):
@@ -252,6 +252,7 @@ class Value:
     def forward(self, **kwds):
 
         self.build_topology()
+
         for v in self.topo:
             v._forward(**kwds)
 
@@ -261,7 +262,9 @@ class Value:
             warn('run forward() before backward()')
 
         self.build_topology()
-        # go one variable at a time and apply the chain rule to get its gradient
+
+        # go one variable at a time and
+        # apply the chain rule to get its gradient
         for v in self.topo:
             v.grad = ones(self.shape) if v == self else zeros(v.shape)
         for v in reversed(self.topo):
@@ -308,6 +311,10 @@ def tensordot(left, right, axes):
     axis of the right tensor; so on and so forth.
     '''
     assert axes >= 0          # only int axes
+    assert axes <= left.ndim
+    assert axes <= right.ndim
+
+    # axes for various numpy tensordot ops later
     axes1 = ([-1 - j for j in range(axes)], list(range(axes)))
     axes2 = ([-1 - j for j in range(left.ndim - axes)],
              list(range(left.ndim - axes)))
@@ -326,8 +333,10 @@ def tensordot(left, right, axes):
     out._forward = _forward
 
     def _backward():
-        left.grad += _tensordot(out.grad, right.data.T, axes=axes3)
-        right.grad += _tensordot(left.data.T, out.grad, axes=axes2)
+        left.grad += _tensordot(out.grad, transpose(right.data),
+                                axes=axes3)
+        right.grad += _tensordot(transpose(left.data), out.grad,
+                                 axes=axes2)
     out._backward = _backward
 
     return out
