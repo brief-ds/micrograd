@@ -9,10 +9,38 @@ A tiny Autograd engine whose only dependency is NumPy. Implements backpropagatio
 This version is capable of working with matrices and higher-order tensors. For @karpathy's original scalar-based version, locate the code with tag `scalar`.
 
 ## Installation
+### For deployment
+Inside the external project where you want to deploy and use micrograd,
+
 ```bash
 python3 -m venv venv
 . venv/bin/activate
-pip install .
+cd <path-to-micrograd-project>
+pip3 install .
+```
+
+### For development
+As different test files have different requirements, one may set up a virtual environment `venv` just for `tests/test_engine.py`, and a separate environment `torch` for all `tests/*.py` including `tests/test_vs_torch.py`, which requires install of PyTorch. No need to run `pip3 install .` under either environment (for running the tests). For example,
+
+```bash
+python3 -m venv torch
+. torch/bin/activate
+
+# no need to run "pip3 install ."
+# but PyTorch need be installed
+# into the torch virtual environment
+pip3 install torch
+```
+
+### For running the demos under `demos/`
+Create a third virtual environment `jupyter`. Install the requirements and the micrograd package itself.
+
+```bash
+python3 -m venv jupyter
+. jupyter/bin/activate
+
+pip3 install .
+pip3 install jupyter
 ```
 
 ## Get Started
