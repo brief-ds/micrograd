@@ -1,8 +1,9 @@
 
 from numpy import (array, ndarray, nan, ones, zeros, full,
                    shape as _shape, where, take, prod,
-                   log, log1p, tanh, arctanh, transpose,
-                   sum as _sum, tensordot as _tensordot,
+                   log, log1p, tanh, arctanh, arcsin,
+                   transpose, sum as _sum,
+                   tensordot as _tensordot,
                    broadcast_arrays, expand_dims,
                    isnan, all as npall)
 from numbers import Number
@@ -195,6 +196,21 @@ class Value:
             valid_data = where((-1 <= self.data) & (self.data <= 1),
                                self.data, nan)
             self.grad += 1 / (1 - valid_data ** 2) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def arcsin(self):
+        out = Value(arcsin(self.data), (self,), 'arcsin')
+
+        def _forward(**kwds):
+            out.data = arcsin(self.data)
+        out._forward = _forward
+
+        def _backward():
+            valid_data = where((-1 <= self.data) & (self.data <= 1),
+                               self.data, nan)
+            self.grad += 1 / (1 - valid_data ** 2) ** .5 * out.grad
         out._backward = _backward
 
         return out

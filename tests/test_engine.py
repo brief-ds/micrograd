@@ -1,6 +1,6 @@
 from unittest import TestCase
 from micrograd import Value, tensordot
-from numpy import array, isclose, allclose, nan, inf, empty
+from numpy import array, isclose, allclose, nan, inf, empty, pi
 
 class AutodiffTest(TestCase):
 
@@ -64,6 +64,15 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(h.grad, [nan, inf, 2, inf, nan],
                                  equal_nan=True))
 
+        # test arcsin
+        k = h.arcsin()
+        k.forward(h=array([-1.01, 0, 1 / 2 ** .5, 1, 1.01]))
+        k.backward()
+        self.assertTrue(allclose(k.data, [nan, 0, pi / 4, pi / 2, nan],
+                                 equal_nan=True))
+        self.assertTrue(allclose(h.grad, [nan, 1, 2 ** .5, inf, nan],
+                                 equal_nan=True))
+
     def test_unary_ops_scalar_input(self):
 
         a = Value(shape=(), name='a')
@@ -100,6 +109,12 @@ class AutodiffTest(TestCase):
         k.forward(a=.5)
         k.backward()
         self.assertTrue(allclose(a.grad, inf))
+
+        # test arcsin
+        k = a.arcsin()
+        k.forward(a=-1 / 2 ** .5)
+        k.backward()
+        self.assertTrue(allclose(a.grad, 2 ** .5))
 
     def test_sum_op(self):
 
