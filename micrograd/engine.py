@@ -1,7 +1,10 @@
 
-from numpy import (array, ndarray, nan, ones, zeros, full,
-                   shape as _shape, where, take, prod,
-                   log, log1p, tanh, arctanh, arcsin,
+from numpy import (array, ndarray, nan,
+                   ones, zeros, full,
+                   shape as _shape, where,
+                   maximum as _maximum,
+                   take, prod, log, log1p, tanh,
+                   arctanh, arcsin,
                    transpose, sum as _sum,
                    tensordot as _tensordot,
                    broadcast_arrays, expand_dims,
@@ -132,14 +135,14 @@ class Value:
         return len(self.shape)
 
     def relu(self):
-        out = Value(where(self.data > 0, self.data, 0), (self,), 'ReLU')
+        out = Value(_maximum(self.data, 0), (self,), 'ReLU')
 
         def _forward(**kwds):
-            out.data = where(self.data > 0, self.data, 0)
+            out.data = _maximum(self.data, 0)
         out._forward = _forward
 
         def _backward():
-            self.grad += (out.data > 0) * out.grad
+            self.grad += where(out.data > 0, out.grad, 0)
         out._backward = _backward
 
         return out
