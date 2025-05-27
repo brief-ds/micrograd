@@ -285,7 +285,11 @@ class Value:
         # go one variable at a time and
         # apply the chain rule to get its gradient
         for v in self.topo:
-            v.grad = ones(self.shape) if v == self else zeros(v.shape)
+            if v.grad is None:       # array not allocated yet
+                v.grad = (ones(self.shape) if v == self
+                          else zeros(v.shape))
+            else:                    # array has been allocated
+                v.grad.fill(1 if v == self else 0)
         for v in reversed(self.topo):
             v._backward()
 
