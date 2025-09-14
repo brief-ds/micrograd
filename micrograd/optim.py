@@ -1,4 +1,6 @@
 
+from . import DTYPE
+
 from .engine import Value
 from numbers import Number
 from numpy import zeros
@@ -39,7 +41,8 @@ class SGD:
         self.learning_rate_is_number = isinstance(learning_rate, Number)
         self.momentum = momentum
         if momentum is not None:
-            self.velocity = [zeros(_.shape) for _ in wrt]
+            self.velocity = [zeros(_.shape, dtype=DTYPE)
+                             for _ in wrt]
 
     def step(self, **kwds):
         ''' One step of stochastic gradient descent '''
@@ -57,6 +60,6 @@ class SGD:
                 v.data -= lr * v.grad
         else:
             for j, v in enumerate(self.wrt):
-                self.velocity[j] = (self.momentum * self.velocity[j]
-                                    + v.grad)
+                self.velocity[j] *= self.momentum
+                self.velocity[j] += v.grad
                 v.data -= lr * self.velocity[j]

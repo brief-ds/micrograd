@@ -1,4 +1,6 @@
 
+from . import DTYPE
+
 from numpy import (array, ndarray, nan,
                    ones, zeros, full,
                    shape as _shape, where,
@@ -19,17 +21,18 @@ class Value:
                  shape=None, name=None):
         if data is not None:
             assert isinstance(data, (ndarray, Number))
-            assert name is None, "data provided, no need for name"
-            assert shape is None, "data provided, no need for shape"
-            self.data = data
+            assert name is None
+            assert shape is None
             self.name = None
             self.shape = _shape(data)
+            # dtype must be enforced on non-scalar data
+            self.data = data.astype(DTYPE) if self.shape else data
         else:
-            assert name, "data not provided, name must be given"
-            assert isinstance(shape, tuple), "shape must be given"
+            assert name
+            assert isinstance(shape, tuple)
             self.name = name
             self.shape = shape
-            self.data = full(self.shape, nan)
+            self.data = full(shape, nan, dtype=DTYPE)
         self.grad = None
         # internal variables used for autograd graph construction
         self._backward = lambda: None
@@ -42,10 +45,12 @@ class Value:
                     _value = kwds[self.name]
                     assert isinstance(_value, (ndarray, Number))
                     assert _shape(_value) == self.shape
-                    self.data = _value
+                    # dtype must be enforced on non-scalar
+                    self.data = (_value.astype(DTYPE) if self.shape
+                                 else _value)
                 else:
                     warn(f'{self.name} not in input data')
-                    self.data = full(self.shape, nan)
+                    self.data = full(self.shape, nan, dtype=DTYPE)
         self._forward = _forward
 
     def __add__(self, other):
@@ -286,8 +291,8 @@ class Value:
         # apply the chain rule to get its gradient
         for v in self.topo:
             if v.grad is None:       # array not allocated yet
-                v.grad = (ones(self.shape) if v == self
-                          else zeros(v.shape))
+                v.grad = (ones(v.shape, dtype=DTYPE) if v == self
+                          else zeros(v.shape, dtype=DTYPE))
             else:                    # array has been allocated
                 v.grad.fill(1 if v == self else 0)
         for v in reversed(self.topo):

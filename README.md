@@ -60,6 +60,28 @@ print(b)      # Value(data=..., grad=[5. 4.])
 
 PyTorch requires any expression to be derived with respect to variables to yield a scalar. micrograd relaxes it: it starts with an all-ones tensor of the shape of the expression's result, as if rewriting the quantity to be derived as the sum of each element of the expression's original result.
 
+## Data type
+As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program using micrograd, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
+
+```sh
+DTYPE=float32 python3 <program_using_micrograd>
+```
+
+micrograd's `__init__.py` reads `DTYPE` from the environment. In Python, _before_ importing micrograd, one may manipulate the `DTYPE` by
+
+```python
+from os import environ
+environ['DTYPE'] = ...
+
+from micrograd import Value
+```
+
+One may get the `DTYPE` that micrograd read,
+
+```python
+from micrograd import DTYPE
+```
+
 ## Lazy evaluation
 When defining a tensor, one may just indicate `shape` and `name`, and later on provide the value.
 
