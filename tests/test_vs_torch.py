@@ -68,6 +68,8 @@ class AutodiffTest(TestCase):
         # forward pass went well
         self.assertTrue(abs(gmg.data - gpt.data.item()) < tol)
         # backward pass went well
+        print(abs(amg.grad - apt.grad.item()))
+        print(abs(bmg.grad - bpt.grad.item()))
         self.assertTrue(abs(amg.grad - apt.grad.item()) < tol)
         self.assertTrue(abs(bmg.grad - bpt.grad.item()) < tol)
 
