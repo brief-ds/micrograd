@@ -9,7 +9,7 @@ from numpy import (array, ndarray, nan,
                    arctanh, arcsin,
                    transpose, sum as _sum,
                    tensordot as _tensordot,
-                   broadcast_arrays, expand_dims,
+                   broadcast_to, expand_dims,
                    isnan, all as npall)
 from numbers import Number
 from warnings import warn
@@ -245,8 +245,8 @@ class Value:
             # as self.data, self.grad
             _out_grad = expand_dims(out.grad, _axis)
 
-            # ... expand further to same shape as self.data, self.grad
-            self.grad += broadcast_arrays(_out_grad, self.data)[0]
+            # ... expand further to same shape as self.data
+            self.grad += broadcast_to(_out_grad, self.shape)
         out._backward = _backward
 
         return out
