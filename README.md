@@ -1,49 +1,29 @@
 
 # micrograd
-A tiny Autograd engine whose only dependency is NumPy. Implements backpropagation (reverse-mode autodiff) over a dynamically built DAG and a small neural networks library on top of it with a PyTorch-like API. Both are tiny.
+A tiny autograd engine whose only dependency is NumPy the linear algebra library. Micrograd implements backpropagation (automatic differentiation) over a graph of mathemtical operations.
 
-* 24 kilobytes code without tests
+* 20 kilobytes core code, 10,000+ times smaller
 * as portable as Python and NumPy
-* loads 10x faster than PyTorch, 30x faster than TensorFlow
+* comparable performance as mammoth contenders
+* code can be timed with Python's native profiler
 
-This version is capable of working with matrices and higher-order tensors. For @karpathy's original scalar-based version, locate the code with tag `scalar`.
-
-## Installation
-### For deployment
-Inside the external project where you want to deploy and use micrograd,
-
-```bash
-python3 -m venv venv
-. venv/bin/activate
-cd <path-to-micrograd-project>
-pip3 install .
-```
-
-### For development
-As different test files have different requirements, one may set up a virtual environment `venv` just for `tests/test_engine.py`, and a separate environment `torch` for all `tests/*.py` including `tests/test_vs_torch.py`, which requires install of PyTorch. No need to run `pip3 install .` under either environment (for running the tests). For example,
-
-```bash
-python3 -m venv torch
-. torch/bin/activate
-
-# no need to run "pip3 install ."
-# but PyTorch need be installed
-# into the torch virtual environment
-pip3 install torch
-```
-
-### For running the demos under `demos/`
-Create a third virtual environment `jupyter`. Install the requirements and the micrograd package itself.
-
-```bash
-python3 -m venv jupyter
-. jupyter/bin/activate
-
-pip3 install .
-pip3 install jupyter
-```
+This version works with vectors, including matrices (2-dimensional), or higher-dimensional tensors. For @karpathy's original scalar-based version, switch to the code with tag `scalar`.
 
 ## Get Started
+In any working directory, create a virtual environment,
+
+```sh
+python3 -m venv venv
+. venv/bin/activate
+cd <directory_of_micrograd>     # if not already in the micrograd's directory
+pip3 install .
+cd <initial_working_directory>  # if different from micrograd
+pip3 install jupyter            # for running demos in demos/
+pip3 install torch              # to run tests/test_vs_torch.py
+```
+
+Below is a Python snippet using micrograd,
+
 ```python
 from micrograd import Value
 from numpy import array
@@ -58,10 +38,12 @@ print(a)      # Value(data=..., grad=[[0. 0.], [1. -1.]])
 print(b)      # Value(data=..., grad=[5. 4.])
 ```
 
-PyTorch requires any expression to be derived with respect to variables to yield a scalar. micrograd relaxes it: it starts with an all-ones tensor of the shape of the expression's result, as if rewriting the quantity to be derived as the sum of each element of the expression's original result.
+PyTorch can only mathematically derive an expression that produces a scalar value. micrograd relaxes it: if the expression produces an array, the sum of the array will be derived.
+
+For full examples, go to [`demos/`](demos). The scalar-version [demos/demo_scalar.ipynb](demos/demo_scalar.ipynb) takes minutes to run, but the vector-version training [demos/demo_vector.ipynb](demos/demo_vector.ipynb) is instant.
 
 ## Data type
-As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program using micrograd, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
+As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
 
 ```sh
 DTYPE=float32 python3 <program_using_micrograd>
