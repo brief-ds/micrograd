@@ -87,7 +87,7 @@ The dependency graph of mathematical operations in a mathematical expression is 
 ## Back propogation (automatic differentiation)
 If a mathematical expression `x` contains variables awaiting value, call `forward()` once to evaluate it.
 
-Call `backward()` for mathematical differentiation of `x` with respect to the dependent variables. The `backward()` manages all initialisations: unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
+Call `backward()` for mathematical differentiation of `x` with respect to the dependent variables. The `backward()` manages all initialisations of gradients: unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
 
 ```python
 x.forward(var1=value1, var2=value2, ...)
