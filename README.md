@@ -22,7 +22,7 @@ pip3 install jupyter            # for running demos in demos/
 pip3 install torch              # to run tests/test_vs_torch.py
 ```
 
-Below is a Python snippet. `c` is defined from `a` and `b`. After calling `c.backward()`, the mathematical derivatives of `c` with respect to any variable it depends on are evaluated, e.g `a.grad` is `dc/da`, `b.grad` is `dc/db`.
+Below is a Python snippet. `c` is the matrix-vector product of `a` and `b`. After calling `c.backward()`, the mathematical derivatives of `c` with respect to any variable it depends on are evaluated, e.g `a.grad` is `dc/da`, `b.grad` is `dc/db`. `c.grad` is always all one as `dc/dc=1`.
 
 ```python
 from micrograd import Value
@@ -58,16 +58,14 @@ c.backward()
 ```
 
 ## Back propogation (automatic differentiation)
-Call `forward()` once to evaluate a mathematical expression, then `backward()` once for mathematical differentiation.
+In the example below, once a mathematical expression `x` is defined, call `forward()` once to evaluate it, then `backward()` for mathematical differentiation of `x` with respect to the variables it depends on. The `backward()` manages all initialisations. Unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
 
 ```python
 x.forward(var1=value1, var2=value2, ...)
 x.backward()
 ```
 
-A lazily defined variable by default takes `nan`, if not fed any value. The final result of forward evaluation will be `nan`, signalling missing values for some variables. The `forward()` call is not necessary when no variable awaits value.
-
-Inside the `backward()` call, all mathematical derivatives are initialised as zero, except that `x.grad` is initialised to be all one, as `dx/dx=1`. Unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
+A lazily defined variable by default takes `nan`, if not fed any value by `forward()`. The final result of forward evaluation will be `nan`, signalling missing values somewhere. The `forward()` call is not necessary when no variable awaits value.
 
 ## Efficient dependency graph computation
 The dependency graph of mathematical operations is only calculated once then cached, **assuming** the structure of a mathematical expression will be *static* once defined.
