@@ -57,21 +57,6 @@ c.forward(var1=array([[2, 3], [5, 4]]),
 c.backward()
 ```
 
-## Back propogation (automatic differentiation)
-In the example below, once a mathematical expression `x` is defined, call `forward()` once to evaluate it, then `backward()` for mathematical differentiation of `x` with respect to the variables it depends on. The `backward()` manages all initialisations. Unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
-
-```python
-x.forward(var1=value1, var2=value2, ...)
-x.backward()
-```
-
-A lazily defined variable by default takes `nan`, if not fed any value by `forward()`. The final result of forward evaluation will be `nan`, signalling missing values somewhere. The `forward()` call is not necessary when no variable awaits value.
-
-## Efficient dependency graph computation
-The dependency graph of mathematical operations is only calculated once then cached, **assuming** the structure of a mathematical expression will be *static* once defined.
-
-For example, in `c = a * b`, the operation of multiplication is part of the structure, although the numerical values `a.data` and `b.data` can change. `c.forward()` will set `c.data` equal to `a.data * b.data`.
-
 ## Data type
 As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
 
@@ -93,6 +78,21 @@ One may get the `DTYPE` that micrograd read,
 ```python
 from micrograd import DTYPE
 ```
+
+## Efficient dependency graph computation
+The dependency graph of mathematical operations is only calculated once then cached, **assuming** the structure of a mathematical expression will be *static* once defined.
+
+For example, in `c = a * b`, the operation of multiplication is part of the structure, although the numerical values `a.data` and `b.data` can change. `c.forward()` will set `c.data` equal to `a.data * b.data`.
+
+## Back propogation (automatic differentiation)
+In the example below, once a mathematical expression `x` is defined, call `forward()` once to evaluate it, then `backward()` for mathematical differentiation of `x` with respect to the variables it depends on. The `backward()` manages all initialisations. Therefore, unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
+
+```python
+x.forward(var1=value1, var2=value2, ...)
+x.backward()
+```
+
+A lazily defined variable by default takes `nan`, if not fed any value by `forward()`. The final result of forward evaluation will be `nan`, signalling missing values somewhere. The `forward()` call is not necessary when no variable awaits value.
 
 ## Supported operators
 * `__pow__`
