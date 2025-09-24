@@ -57,6 +57,8 @@ c.forward(var1=array([[2, 3], [5, 4]]),
 c.backward()
 ```
 
+By default, a variable awaiting value takes `nan`, if not fed any value in `forward()`. The final result will be `nan`, signalling missing values somewhere. If a mathematical expression contains no variable awaiting value, the `forward()` call is not necessary. Once defined, its value will be stored in `.data`.
+
 ## Data type
 As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
 
@@ -80,19 +82,17 @@ from micrograd import DTYPE
 ```
 
 ## Efficient dependency graph computation
-The dependency graph of mathematical operations is only calculated once then cached, **assuming** the structure of a mathematical expression will be *static* once defined.
-
-For example, in `c = a * b`, the operation of multiplication is part of the structure, although the numerical values `a.data` and `b.data` can change. `c.forward()` will set `c.data` equal to `a.data * b.data`.
+The dependency graph of mathematical operations in a mathematical expression is calculated only once then cached, **assuming** this expression is *static*, although the values of its variables may change.
 
 ## Back propogation (automatic differentiation)
-In the example below, once a mathematical expression `x` is defined, call `forward()` once to evaluate it, then `backward()` for mathematical differentiation of `x` with respect to the variables it depends on. The `backward()` manages all initialisations. Therefore, unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
+If a mathematical expression `x` contains variables awaiting value, call `forward()` once to evaluate it.
+
+Call `backward()` for mathematical differentiation of `x` with respect to the dependent variables. The `backward()` manages all initialisations: unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
 
 ```python
 x.forward(var1=value1, var2=value2, ...)
 x.backward()
 ```
-
-A lazily defined variable by default takes `nan`, if not fed any value by `forward()`. The final result of forward evaluation will be `nan`, signalling missing values somewhere. The `forward()` call is not necessary when no variable awaits value.
 
 ## Supported operators
 * `__pow__`
@@ -108,31 +108,35 @@ A lazily defined variable by default takes `nan`, if not fed any value by `forwa
 * `mean`
 
 ## Optimise by Stochastic Gradient Descent
-If a function `x` is defined from variables `a` and `b`, we can minimise `x` by  moving `a` against the direction of `dx/da` etc.
+We can minimise a mathematical expression by moving the values of its dependent variables. For example, if `x` is defined from `a` and `b`,
 
 ```python
+# call x.forward() if necessary
 x.backward()
 a -= learning_rate * a.grad
 b -= learning_rate * b.grad
 ```
 
-The `micrograd.optim.SGD` is designed to wrap up the above
+The `micrograd.optim.SGD` wraps up the above
 
 ```python
 SGD(target,   # variable to be minimised
-    wrt=[],   # list of variables with respect to which to perform minimisation
-    learning_rate=None,    # a non-negative number or a generator of them
+    wrt=[],   # list of variables with respect to which
+              # to perform minimisation
+    learning_rate=None,
+              # a non-negative number or a generator of them
     momentum=None)
 ```
 
 The `learning_rate` can accept a generator implementing a schedule of varying learning rates.
 
-Once initialised, just call `step()` on the optimiser with the minibatch data.
+Once `SGD` is created, just call `SGD.step()` with the minibatch data.
 
 ```python
 optimiser = SGD(...)
 
 for k in range(n_steps):
+
     # batch_iterator yields a dict
     # for the minibatch, e.g.
     #
@@ -143,11 +147,10 @@ for k in range(n_steps):
 
     optimiser.step(**batch_data)
 
-    # validation after adjusting the model parameters
+    # validation
     validation_metric.forward()
-```
 
-Refer to `micrograd/optim.py` for more detail.
+```
 
 ## The Demos
 The notebooks under `demos/` provide a full demo of training an 2-layer neural network (MLP) binary classifier. This is achieved by initializing a neural net from `micrograd.nn` module, implementing a simple svm "max-margin" binary classification loss and using SGD for optimization. As shown in the notebook, using a 2-layer neural net with two 16-node hidden layers we achieve the following decision boundary on the moon dataset:
