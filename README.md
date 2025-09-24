@@ -4,7 +4,7 @@ A tiny autograd engine whose only dependency is NumPy the linear algebra library
 
 * 20 kilobytes core code, 10,000+ times smaller
 * as portable as Python and NumPy
-* comparable performance as mammoth contenders
+* comparable performance as industrial contenders
 * code can be timed with Python's native profiler
 
 This version works with vectors, including matrices (2-dimensional), or higher-dimensional tensors. For @karpathy's original scalar-based version, switch to the code with tag `scalar`.
@@ -22,7 +22,7 @@ pip3 install jupyter            # for running demos in demos/
 pip3 install torch              # to run tests/test_vs_torch.py
 ```
 
-Below is a Python snippet using micrograd,
+Below is a Python snippet. `c` is defined from `a` and `b`. After calling `c.backward()`, the mathematical derivatives of `c` with respect to any variable it depends on are evaluated, e.g `a.grad` is `dc/da`, `b.grad` is `dc/db`.
 
 ```python
 from micrograd import Value
@@ -41,6 +41,38 @@ print(b)      # Value(data=..., grad=[5. 4.])
 PyTorch can only mathematically derive an expression that produces a scalar value. micrograd relaxes it: if the expression produces an array, the sum of the array will be derived.
 
 For full examples, go to [`demos/`](demos). The scalar-version [demos/demo_scalar.ipynb](demos/demo_scalar.ipynb) takes minutes to run, but the vector-version training [demos/demo_vector.ipynb](demos/demo_vector.ipynb) is instant.
+
+## Lazy evaluation
+When defining a tensor, one may just indicate `shape` and `name`, and later on provide the value corresponding to the `name`.
+
+```python
+from micrograd import Value
+from numpy import array
+
+a = Value(shape=(2, 2), name='var1')
+b = Value(shape=(2,), name='var2')
+c = (a @ b).relu()
+c.forward(var1=array([[2, 3], [5, 4]]),
+          var2=array([1, -1]))
+c.backward()
+```
+
+## Back propogation (automatic differentiation)
+Call `forward()` once to evaluate a mathematical expression, then `backward()` once for mathematical differentiation.
+
+```python
+x.forward(var1=value1, var2=value2, ...)
+x.backward()
+```
+
+A lazily defined variable by default takes `nan`, if not fed any value. The final result of forward evaluation will be `nan`, signalling missing values for some variables. The `forward()` call is not necessary when no variable awaits value.
+
+Inside the `backward()` call, all mathematical derivatives are initialised as zero, except that `x.grad` is initialised to be all one, as `dx/dx=1`. Unlike PyTorch, no `zero_grad()` is necessary before `backward()`.
+
+## Efficient dependency graph computation
+The dependency graph of mathematical operations is only calculated once then cached, **assuming** the structure of a mathematical expression will be *static* once defined.
+
+For example, in `c = a * b`, the operation of multiplication is part of the structure, although the numerical values `a.data` and `b.data` can change. `c.forward()` will set `c.data` equal to `a.data * b.data`.
 
 ## Data type
 As one example, with `f=ab`, `df/da=b`. `a.grad` would inherit the data type of `b`. For this inter-dependence, we design a uniform `DTYPE` for one program, to be passed from the environment. By default `DTYPE=float64`, identical as the Python float type. For example,
@@ -64,38 +96,6 @@ One may get the `DTYPE` that micrograd read,
 from micrograd import DTYPE
 ```
 
-## Lazy evaluation
-When defining a tensor, one may just indicate `shape` and `name`, and later on provide the value.
-
-```python
-from micrograd import Value
-from numpy import array
-
-a = Value(shape=(2, 2), name='var1')
-b = Value(shape=(2,), name='var2')
-c = (a @ b).relu()
-c.forward(var1=array([[2, 3], [5, 4]]),
-          var2=array([1, -1]))
-c.backward()
-```
-
-## Essential Use Pattern
-Call `forward()` once with the values for the varialbes, then `backward()` once for the mathematical derivatives.
-
-```python
-x.forward(var1=value1, var2=value2, ...)
-x.backward()
-```
-
-Each time the `forward()` is called (e.g. for minibatch evaluation), the lazily defined variables have to be fed values in the function signature. Otherwise, it will take all `nan` as value. The final result will likely be `nan` to signal missing values for some variables.
-
-If an expression has no lazy variables at all, `forward()` call is not necessary. Once defined, the expression is evaluated.
-
-Inside the `backward()` call, all the derivatives are initialised zero other than the final one to be initialised all-one, before the chain derivation. So no `zero_grad()` is necessary or defined anywhere.
-
-## Efficient operator dependency topology computation
-The operator dependency topology is only calculated once then cached, supposing the topology is *static* once an expression is defined.
-
 ## Supported operators
 * `__pow__`
 * `__matmul__`
@@ -109,35 +109,44 @@ The operator dependency topology is only calculated once then cached, supposing 
 * `sum`
 * `mean`
 
-## Stochastic Gradient Descent
-To be able to implement any SGD algorithm flexibly, the `micrograd.optim.SGD` is designed as
+## Optimise by Stochastic Gradient Descent
+If a function `x` is defined from variables `a` and `b`, we can minimise `x` by  moving `a` against the direction of `dx/da` etc.
+
+```python
+x.backward()
+a -= learning_rate * a.grad
+b -= learning_rate * b.grad
+```
+
+The `micrograd.optim.SGD` is designed to wrap up the above
 
 ```python
 SGD(target,   # variable to be minimised
     wrt=[],   # list of variables with respect to which to perform minimisation
     learning_rate=None,    # a non-negative number or a generator of them
-    <SGD param>,
-    <SGD param>, ...)
+    momentum=None)
 ```
 
-When the target variable is not a scalar, the objective function is as if rewritten as the sum of each element in the target tensor. The `learning_rate` can accept a generator implementing a schedule of varying learning rates.
+The `learning_rate` can accept a generator implementing a schedule of varying learning rates.
 
 Once initialised, just call `step()` on the optimiser with the minibatch data.
 
 ```python
 optimiser = SGD(...)
 
-# batch_iterator yields a dict
-# for the minibatch, e.g.
-#
-#   {'X': .., 'y': ..}
-
-for k in range(..):
-    # one step of gradient descent on all parameters
+for k in range(n_steps):
+    # batch_iterator yields a dict
+    # for the minibatch, e.g.
+    #
+    #  batch_data = {'X': ..,
+    #                'y': ..}
+    #
     batch_data = next(batch_iterator)
+
     optimiser.step(**batch_data)
 
-    # one may now call target.forward(..) for validation
+    # validation after adjusting the model parameters
+    validation_metric.forward()
 ```
 
 Refer to `micrograd/optim.py` for more detail.
@@ -161,9 +170,18 @@ dot = draw_dot(y)
 ![2d neuron](assets/gout.svg)
 
 ## Running tests
-The following line uses the built-in `unittest` module to run the unit tests. But to run `tests/test_vs_torch.py` it requires PyTorch. One could create a separate virtual environment for test, as PyTorch may require downgrade of NumPy to version 1.
+If PyTorch requires NumPy lower than version 2, create a new virtual environment `torch`, and install downgraded NumPy there for the tests.
 
-```bash
+```sh
+python3 -m venv torch
+. torch/bin/activate
+pip3 install "numpy<2"    # put numpy<2 inside quotation marks
+                          # quotation marks here are important
+```
+
+Run the unit tests:
+
+```sh
 python -m unittest tests/*.py
 ```
 
