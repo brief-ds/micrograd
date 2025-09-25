@@ -117,7 +117,7 @@ a -= learning_rate * a.grad
 b -= learning_rate * b.grad
 ```
 
-The `micrograd.optim.SGD` wraps up the above
+The [`micrograd.optim.SGD`](micrograd/optim.py) wraps up the above
 
 ```python
 SGD(target,   # variable to be minimised
@@ -130,7 +130,7 @@ SGD(target,   # variable to be minimised
 
 The `learning_rate` can accept a generator implementing a schedule of varying learning rates.
 
-Once `SGD` is created, just call `SGD.step()` with the minibatch data.
+Once [`SGD`](micrograd/optim.py) is created, just call `SGD.step()` with the minibatch data.
 
 ```python
 optimiser = SGD(...)
