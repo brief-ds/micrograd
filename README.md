@@ -2,7 +2,7 @@
 # micrograd
 A tiny autograd engine whose only dependency is NumPy the linear algebra library. Micrograd implements backpropagation (automatic differentiation) over a graph of mathemtical operations.
 
-* 20 kilobytes core code, 10,000+ times smaller
+* 20 kilobytes [core code](micrograd/engine.py), 10,000+ times smaller
 * as portable as Python and NumPy
 * comparable performance as industrial contenders
 * code can be timed with Python's native profiler
