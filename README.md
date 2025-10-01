@@ -9,6 +9,8 @@ A tiny autograd engine whose only dependency is NumPy the linear algebra library
 
 This version works with vectors, including matrices (2-dimensional), or higher-dimensional tensors. For @karpathy's original scalar-based version, switch to the code with tag `scalar`.
 
+TensorFlow, Apple's MLX and our micrograd, [https://www.brief-ds.com/2025/09/25/tensorflow-mlx.html](https://www.brief-ds.com/2025/09/25/tensorflow-mlx.html)
+
 ## Get Started
 In any working directory, create a virtual environment,
 
