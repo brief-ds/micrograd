@@ -139,6 +139,19 @@ class Value:
     def ndim(self):
         return len(self.shape)
 
+    def attend(self, args):
+        out = Value(self.data[args], (self,), 'attend')
+
+        def _forward(**kwds):
+            out.data = self.data[args]
+        out._forward = _forward
+
+        def _backward():
+            self.grad[args] += out.grad
+        out._backward = _backward
+
+        return out
+
     def relu(self):
         out = Value(maximum(self.data, 0), (self,), 'ReLU')
 
