@@ -139,15 +139,34 @@ class Value:
     def ndim(self):
         return len(self.shape)
 
-    def attend(self, args):
-        out = Value(self.data[args], (self,), 'attend')
+    def topk(self, k):
+        assert self.ndim == 1
+        k2 = self.data.size - k
+
+        pargs = argpartition(self.data, k2)
+        out = Args(pargs[-k:], (self,), 'topk')
 
         def _forward(**kwds):
-            out.data = self.data[args]
+            pargs = argpartition(self.data, k2)
+            out.data = pargs[-k:]
+        out._forward = _forward
+
+        return out
+
+    def attend(self, args):
+        if isinstance(args, Args):
+            out = Value(self.data[args.data], (self, args), 'attend')
+        else:
+            out = Value(self.data[args], (self,), 'attend')
+
+        def _forward(**kwds):
+            _args = args.data if isinstance(args, Args) else args
+            out.data = self.data[_args]
         out._forward = _forward
 
         def _backward():
-            self.grad[args] += out.grad
+            _args = args.data if isinstance(args, Args) else args
+            self.grad[_args] += out.grad
         out._backward = _backward
 
         return out
@@ -316,6 +335,8 @@ class Value:
         # go one variable at a time and
         # apply the chain rule to get its gradient
         for v in self.topo:
+            if not isinstance(v, Value):
+                continue
             if v.grad is None:       # array not allocated yet
                 v.grad = (ones(v.shape, dtype=DTYPE) if v == self
                           else zeros(v.shape, dtype=DTYPE))
@@ -350,6 +371,24 @@ class Value:
 
     def __repr__(self):
         return f"Value(data={self.data}, grad={self.grad})"
+
+
+class Args:
+
+    def __init__(self, data=None, _children=(), _op=''):
+        assert isinstance(data, (ndarray, Number))
+        self.name = None
+        self.shape = _shape(data)
+        # dtype must be enforced on non-scalar data
+        self.data = data.astype(int) if self.shape else int(data)
+        # internal variables used for autograd graph construction
+        self._backward = lambda: None
+        self._forward = lambda: None
+        self._prev = set(_children)
+        self._op = _op # the op that produced this node, for graphviz / debugging / etc
+
+    def __repr__(self):
+        return f"Value(data={self.data})"
 
 
 def tensordot(left, right, axes):
