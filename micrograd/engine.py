@@ -11,6 +11,7 @@ from numpy import (array, ndarray, nan,
                    transpose, sum as np_sum,
                    tensordot as np_tensordot,
                    broadcast_to, expand_dims,
+                   concatenate as np_concatenate, split,
                    isnan, all as np_all)
 from numbers import Number
 from warnings import warn
@@ -458,6 +459,26 @@ def tensordot(left, right, axes):
                                 axes=axes3)
         right.grad += np_tensordot(transpose(left.data), out.grad,
                                  axes=axes2)
+    out._backward = _backward
+
+    return out
+
+def concatenate(lst, axis):
+    lst = [_ if isinstance(_, Value) else Value(_)
+           for _ in lst]
+    widths = [_.shape[axis] for _ in lst]
+
+    out = Value(np_concatenate([_.data for _ in lst], axis=axis),
+                tuple(lst), 'concat')
+
+    def _forward(**kwds):
+        out.data = np_concatenate([_.data for _ in lst], axis=axis)
+    out._forward = _forward
+
+    def _backward():
+        lst_grad = split(out.grad, widths, axis=axis)
+        for v, grad in zip(lst, lst_grad):
+            v.grad += grad
     out._backward = _backward
 
     return out
