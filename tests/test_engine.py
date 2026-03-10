@@ -23,6 +23,13 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(b.grad, [0, 18]))
         self.assertTrue(allclose(c.grad, [1, 1]))
 
+        # test exp
+        d = (a * 2).exp()
+        d.forward(a=array([1, 2]))
+        d.backward()
+        self.assertTrue(allclose(d.data, [7.38905, 54.59815]))
+        self.assertTrue(allclose(a.grad, [14.77811, 109.1963]))
+
         # test log
         d = a.log()
         d.forward(a=array([2, 3]))

@@ -79,12 +79,14 @@ class AutodiffTest(TestCase):
         b = a.tanh().log1p().sum()
         c = a.arctanh().log().sum()
         d = a.arcsin().sum()
+        g = a.exp().sum()
 
         a2 = Tensor([.3, .8])
         a2.requires_grad = True
         b2 = a2.tanh().log1p().sum()
         c2 = a2.arctanh().log().sum()
         d2 = a2.arcsin().sum()
+        g2 = a2.exp().sum()
 
         b.backward()
         b2.backward()
@@ -101,6 +103,12 @@ class AutodiffTest(TestCase):
         a2.grad = None
         d2.backward()
         self.assertTrue(allclose(d.data, d2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+
+        g.backward()
+        a2.grad = None
+        g2.backward()
+        self.assertTrue(allclose(g.data, g2.data))
         self.assertTrue(allclose(a.grad, a2.grad))
 
     def test_tensordot(self):

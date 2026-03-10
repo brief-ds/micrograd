@@ -5,7 +5,7 @@ from numpy import (array, ndarray, nan,
                    ones, zeros, full,
                    shape as np_shape, where,
                    maximum, take, prod,
-                   log, log1p, tanh,
+                   exp, log, log1p, tanh,
                    arctanh, arcsin,
                    transpose, sum as np_sum,
                    tensordot as np_tensordot,
@@ -152,6 +152,19 @@ class Value:
 
         return out
 
+    def exp(self):
+        out = Value(exp(self.data), (self,), 'exp')
+
+        def _forward(**kwds):
+            out.data = exp(self.data)
+        out._forward = _forward
+
+        def _backward():
+            self.grad += out.data * out.grad
+        out._backward = _backward
+
+        return out
+
     def log(self):
         out = Value(log(self.data), (self,), 'log')
 
@@ -159,7 +172,7 @@ class Value:
             out.data = log(self.data)
         out._forward = _forward
 
-        def _backward(**kwds):
+        def _backward():
             valid_data = where(self.data >= 0, self.data, nan)
             self.grad += 1 / valid_data * out.grad
         out._backward = _backward

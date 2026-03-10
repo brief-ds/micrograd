@@ -101,6 +101,7 @@ x.backward()
 * `__matmul__`
 * `tensordot` for tensor contraction: unlike numpy tensordot, the last axis (indexed by -1) of the left tensor contracts with the first axis of the right tensor; the next to last axis (indexed by -2) of the left tensor with the 2nd axis of the right tensor; so on and so forth.
 * `relu`
+* `exp`
 * `log`
 * `log1p`
 * `tanh`
