@@ -4,6 +4,7 @@ from . import DTYPE
 from numpy import (array, ndarray, nan,
                    ones, zeros, full,
                    shape as np_shape, where,
+                   max as np_max,
                    maximum, take, prod,
                    exp, log, log1p, tanh,
                    arctanh, arcsin,
@@ -302,6 +303,33 @@ class Value:
         else:
             denom = prod(take(self.shape, axis))
         return self.sum(axis) * (1 / denom)
+
+    def max(self, axis=None):
+        if axis is not None:
+            raise NotImplementedError
+
+        out = Value(np_max(self.data, axis=axis), (self,), 'max')
+
+        def _forward(**kwargs):
+            out.data = np_max(self.data, axis=axis)
+        out._forward = _forward
+
+        def _backward():
+            exp_data = out.data
+            self.grad[self.data == exp_data] += out.grad
+        out._backward = _backward
+
+        return out
+
+    def softmax(self, axis=None):
+        if axis is not None:
+            raise NotImplementedError
+
+        self_max = self.max(axis=axis)
+        y = self - self_max
+        y_exp = y.exp()
+        y_exp_sum = y_exp.sum(axis=axis)
+        return y_exp / y_exp_sum
 
     def build_topology(self):
         # topological order all of the children in the graph
