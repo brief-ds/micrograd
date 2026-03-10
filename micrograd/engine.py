@@ -3,14 +3,14 @@ from . import DTYPE
 
 from numpy import (array, ndarray, nan,
                    ones, zeros, full,
-                   shape as _shape, where,
-                   maximum as _maximum,
-                   take, prod, log, log1p, tanh,
+                   shape as np_shape, where,
+                   maximum, take, prod,
+                   log, log1p, tanh,
                    arctanh, arcsin,
-                   transpose, sum as _sum,
-                   tensordot as _tensordot,
+                   transpose, sum as np_sum,
+                   tensordot as np_tensordot,
                    broadcast_to, expand_dims,
-                   isnan, all as npall)
+                   isnan, all as np_all)
 from numbers import Number
 from warnings import warn
 
@@ -24,7 +24,7 @@ class Value:
             assert name is None
             assert shape is None
             self.name = None
-            self.shape = _shape(data)
+            self.shape = np_shape(data)
             # dtype must be enforced on non-scalar data
             self.data = data.astype(DTYPE) if self.shape else data
         else:
@@ -44,7 +44,7 @@ class Value:
                 if self.name in kwds:
                     _value = kwds[self.name]
                     assert isinstance(_value, (ndarray, Number))
-                    assert _shape(_value) == self.shape
+                    assert np_shape(_value) == self.shape
                     # dtype must be enforced on non-scalar
                     self.data = (_value.astype(DTYPE) if self.shape
                                  else _value)
@@ -140,10 +140,10 @@ class Value:
         return len(self.shape)
 
     def relu(self):
-        out = Value(_maximum(self.data, 0), (self,), 'ReLU')
+        out = Value(maximum(self.data, 0), (self,), 'ReLU')
 
         def _forward(**kwds):
-            out.data = _maximum(self.data, 0)
+            out.data = maximum(self.data, 0)
         out._forward = _forward
 
         def _backward():
@@ -234,10 +234,10 @@ class Value:
         else:
             _axis = tuple(map(de_neg, axis))
 
-        out = Value(_sum(self.data, axis=axis), (self,), 'sum')
+        out = Value(np_sum(self.data, axis=axis), (self,), 'sum')
 
         def _forward(**kwds):
-            out.data = _sum(self.data, axis=axis)
+            out.data = np_sum(self.data, axis=axis)
         out._forward = _forward
 
         def _backward():
@@ -282,7 +282,7 @@ class Value:
 
     def backward(self):
 
-        if npall(isnan(self.data)):
+        if np_all(isnan(self.data)):
             warn('run forward() before backward()')
 
         self.build_topology()
@@ -353,17 +353,17 @@ def tensordot(left, right, axes):
             else Value(left, _op='c'))
     right = (right if isinstance(right, Value)
              else Value(right, _op='c'))
-    out = Value(_tensordot(left.data, right.data, axes=axes1),
+    out = Value(np_tensordot(left.data, right.data, axes=axes1),
                 (left, right), '@')
 
     def _forward(**kwds):
-        out.data = _tensordot(left.data, right.data, axes=axes1)
+        out.data = np_tensordot(left.data, right.data, axes=axes1)
     out._forward = _forward
 
     def _backward():
-        left.grad += _tensordot(out.grad, transpose(right.data),
+        left.grad += np_tensordot(out.grad, transpose(right.data),
                                 axes=axes3)
-        right.grad += _tensordot(transpose(left.data), out.grad,
+        right.grad += np_tensordot(transpose(left.data), out.grad,
                                  axes=axes2)
     out._backward = _backward
 
