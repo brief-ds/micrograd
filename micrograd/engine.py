@@ -4,6 +4,7 @@ from . import DTYPE
 from numpy import (array, ndarray, nan,
                    ones, zeros, full,
                    shape as np_shape, where,
+                   argpartition,
                    max as np_max,
                    maximum, take, prod,
                    exp, log, log1p, tanh,
@@ -11,7 +12,7 @@ from numpy import (array, ndarray, nan,
                    transpose, sum as np_sum,
                    tensordot as np_tensordot,
                    broadcast_to, expand_dims,
-                   concatenate as np_concatenate, split,
+                   concatenate as np_concatenate,
                    isnan, all as np_all)
 from numbers import Number
 from warnings import warn
@@ -155,20 +156,25 @@ class Value:
 
         return out
 
-    def attend(self, args):
+    def attend(self, args, axis=0):
+        ind = [slice(None, None)] * self.ndim
         if isinstance(args, Args):
-            out = Value(self.data[args.data], (self, args), 'attend')
+            ind[axis] = args.data
+            out = Value(self.data[*ind], (self, args), 'attend')
         else:
-            out = Value(self.data[args], (self,), 'attend')
+            ind[axis] = args
+            out = Value(self.data[*ind], (self,), 'attend')
 
         def _forward(**kwds):
-            _args = args.data if isinstance(args, Args) else args
-            out.data = self.data[_args]
+            if isinstance(args, Args):
+                ind[axis] = args.data
+            out.data = self.data[*ind]
         out._forward = _forward
 
         def _backward():
-            _args = args.data if isinstance(args, Args) else args
-            self.grad[_args] += out.grad
+            if isinstance(args, Args):
+                ind[axis] = args.data
+            self.grad[*ind] += out.grad
         out._backward = _backward
 
         return out
@@ -407,7 +413,7 @@ class Args:
     def __init__(self, data=None, _children=(), _op=''):
         assert isinstance(data, (ndarray, Number))
         self.name = None
-        self.shape = _shape(data)
+        self.shape = np_shape(data)
         # dtype must be enforced on non-scalar data
         self.data = data.astype(int) if self.shape else int(data)
         # internal variables used for autograd graph construction
@@ -417,7 +423,7 @@ class Args:
         self._op = _op # the op that produced this node, for graphviz / debugging / etc
 
     def __repr__(self):
-        return f"Value(data={self.data})"
+        return f"Args(data={self.data})"
 
 
 def tensordot(left, right, axes):
