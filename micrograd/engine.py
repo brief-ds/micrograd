@@ -13,6 +13,7 @@ from numpy import (array, ndarray, nan,
                    tensordot as np_tensordot,
                    broadcast_to, expand_dims,
                    concatenate as np_concatenate,
+                   vstack as np_vstack, split,
                    isnan, all as np_all)
 from numbers import Number
 from warnings import warn
@@ -470,9 +471,12 @@ def tensordot(left, right, axes):
     return out
 
 def concatenate(lst, axis):
+    assert lst
+
     lst = [_ if isinstance(_, Value) else Value(_)
            for _ in lst]
-    widths = [_.shape[axis] for _ in lst]
+    sections = [_.shape[axis] for _ in lst]
+    sections = array(sections[:-1]).cumsum()
 
     out = Value(np_concatenate([_.data for _ in lst], axis=axis),
                 tuple(lst), 'concat')
@@ -482,9 +486,31 @@ def concatenate(lst, axis):
     out._forward = _forward
 
     def _backward():
-        lst_grad = split(out.grad, widths, axis=axis)
+        lst_grad = split(out.grad, sections, axis=axis)
         for v, grad in zip(lst, lst_grad):
-            v.grad += grad
+            v.grad += grad.squeeze()
+    out._backward = _backward
+
+    return out
+
+def vstack(lst):
+    assert lst
+
+    lst = [_ if isinstance(_, Value) else Value(_)
+           for _ in lst]
+    sections = [1 if _.ndim <= 1 else _.shape[0] for _ in lst]
+    sections = array(sections[:-1]).cumsum()
+
+    out = Value(np_vstack([_.data for _ in lst]), tuple(lst), 'vstack')
+
+    def _forward(**kwds):
+        out.data = np_vstack([_.data for _ in lst])
+    out._forward = _forward
+
+    def _backward():
+        lst_grad = split(out.grad, sections, axis=0)
+        for v, grad in zip(lst, lst_grad):
+            v.grad += grad.squeeze()
     out._backward = _backward
 
     return out
