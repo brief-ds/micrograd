@@ -411,17 +411,20 @@ class Value:
 
 class Args:
 
-    def __init__(self, data=None, _children=(), _op=''):
-        assert isinstance(data, (ndarray, Number))
-        self.name = None
-        self.shape = np_shape(data)
-        # dtype must be enforced on non-scalar data
-        self.data = data.astype(int) if self.shape else int(data)
+    def __init__(self, data=None, _children=(), _op='', name=None):
+        assert data is not None
+        self.name = name
+        self.data = data
         # internal variables used for autograd graph construction
         self._backward = lambda: None
-        self._forward = lambda: None
         self._prev = set(_children)
         self._op = _op # the op that produced this node, for graphviz / debugging / etc
+
+        def _forward(**kwds):
+            if self.name:
+                if self.name in kwds:
+                    self.data = kwds[self.name]
+        self._forward = _forward
 
     def __repr__(self):
         return f"Args(data={self.data})"
@@ -475,14 +478,16 @@ def concatenate(lst, axis):
 
     lst = [_ if isinstance(_, Value) else Value(_)
            for _ in lst]
-    sections = [_.shape[axis] for _ in lst]
+    sections = [1 if _.ndim == 0 else _.shape[axis] for _ in lst]
     sections = array(sections[:-1]).cumsum()
 
-    out = Value(np_concatenate([_.data for _ in lst], axis=axis),
+    out = Value(np_concatenate([[_.data] if _.ndim == 0
+                                else _.data for _ in lst], axis=axis),
                 tuple(lst), 'concat')
 
     def _forward(**kwds):
-        out.data = np_concatenate([_.data for _ in lst], axis=axis)
+        out.data = np_concatenate([[_.data] if _.ndim == 0
+                                   else _.data for _ in lst], axis=axis)
     out._forward = _forward
 
     def _backward():
