@@ -4,7 +4,7 @@ from . import DTYPE
 from numpy import (array, ndarray, nan,
                    ones, zeros, full,
                    shape as np_shape, where,
-                   argpartition,
+                   argpartition, argmax as np_argmax,
                    max as np_max,
                    maximum, take, prod,
                    exp, log, log1p, tanh,
@@ -153,6 +153,15 @@ class Value:
         def _forward(**kwds):
             pargs = argpartition(self.data, k2)
             out.data = pargs[-k:]
+        out._forward = _forward
+
+        return out
+
+    def argmax(self):
+        out = Args(np_argmax(self.data), (self,), 'argmax')
+
+        def _forward(**kwds):
+            out.data = np_argmax(self.data)
         out._forward = _forward
 
         return out
@@ -328,6 +337,9 @@ class Value:
         out._backward = _backward
 
         return out
+
+    def min(self, axis=None):
+        return - (- self).max(axis=axis)
 
     def softmax(self, axis=None):
         if axis is not None:
