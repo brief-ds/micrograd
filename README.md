@@ -1,5 +1,11 @@
 
 # micrograd
+This is a tensor-capable version, extended from the @karpathy's orginial one that only supported scalars.
+
+TensorFlow, Apple's MLX and our micrograd
+
+[https://www.brief-ds.com/2025/09/25/micrograd.html](https://www.brief-ds.com/2025/09/25/micrograd.html)
+
 A tiny autograd engine whose only dependency is NumPy the linear algebra library. Micrograd implements backpropagation (automatic differentiation) over a graph of mathemtical operations.
 
 * 20 kilobytes [core code](micrograd/engine.py), 10,000+ times smaller
@@ -7,9 +13,7 @@ A tiny autograd engine whose only dependency is NumPy the linear algebra library
 * comparable performance as industrial contenders
 * code can be timed with Python's native profiler
 
-This version works with vectors, including matrices (2-dimensional), or higher-dimensional tensors. For @karpathy's original scalar-based version, switch to the code with tag `scalar`.
-
-TensorFlow, Apple's MLX and our micrograd, [https://www.brief-ds.com/2025/09/25/tensorflow-mlx.html](https://www.brief-ds.com/2025/09/25/tensorflow-mlx.html)
+For @karpathy's original version, switch to the code with tag `scalar`.
 
 ## Get Started
 In any working directory, create a virtual environment,
