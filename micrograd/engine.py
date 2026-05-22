@@ -275,16 +275,18 @@ class Value:
         # topological order all of the children in the graph
         if not hasattr(self, 'topo'):
             self.topo = []
-            visited = set()
+            to_expand = [self]
+            discovered = set()
 
-            def build_topo(v):
-                if v not in visited:
-                    visited.add(v)
-                    for child in v._prev:
-                        build_topo(child)
+            while to_expand:
+                v = to_expand.pop()
+                if v not in discovered:
+                    discovered.add(v)
+                    to_expand.append(v)
+                    for p in v._prev:
+                        to_expand.append(p)
+                elif v not in self.topo:
                     self.topo.append(v)
-
-            build_topo(self)
 
     def forward(self, **kwds):
 
