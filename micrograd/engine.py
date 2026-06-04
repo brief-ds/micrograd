@@ -444,6 +444,30 @@ class Args:
         return f"Args(data={self.data})"
 
 
+def topo_forward(topology=[], **kwds):
+    for _ in topology:
+        _._forward(**kwds)
+
+def topo_backward(topology=[]):
+    if not topology:
+        return
+
+    stop = topology[-1]
+    if np_all(isnan(stop.data)):
+        warn('run forward() before backward()')
+
+    for v in topology:
+        if not isinstance(v, Value):
+            continue
+        if v.grad is None:       # array not allocated yet
+            v.grad = (ones(v.shape, dtype=DTYPE) if v == stop
+                      else zeros(v.shape, dtype=DTYPE))
+        else:                    # array has been allocated
+            v.grad.fill(1 if v == stop else 0)
+
+    for v in reversed(topology):
+        v._backward()
+
 def tensordot(left, right, axes):
     ''' Tensor contraction, only accepting int axes
 
