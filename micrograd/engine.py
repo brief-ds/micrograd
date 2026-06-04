@@ -281,7 +281,7 @@ class Value:
         def _backward():
             valid_data = where((-1 <= self.data) & (self.data <= 1),
                                self.data, nan)
-            self.grad += 1 / (1 - valid_data ** 2) ** .5 * out.grad
+            self.grad += 1 / sqrt(1 - valid_data ** 2) * out.grad
         out._backward = _backward
 
         return out
