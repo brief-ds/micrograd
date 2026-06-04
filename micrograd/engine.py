@@ -243,6 +243,24 @@ class Value:
 
         return out
 
+    def log1pexp(self):
+        log1pexp_forward = lambda x: where(x >= 0,
+                                           x + log1p(exp(-x)),
+                                           log1p(exp(x)))
+        out = Value(log1pexp_forward(self.data), (self,), 'log1pexp')
+
+        def _forward(**kwds):
+            out.data = log1pexp_forward(self.data)
+        out._forward = _forward
+
+        def _backward():
+            self.grad += where(self.data >= 0,
+                               1 - 1 / (1 + exp(self.data)),
+                               1 / (1 + exp(- self.data))) * out.grad
+        out._backward = _backward
+
+        return out
+
     def tanh(self):
         out = Value(tanh(self.data), (self,), 'tanh')
 
