@@ -2,8 +2,7 @@
 from . import DTYPE
 
 from .engine import Value
-from numbers import Number
-from numpy import zeros
+from numpy import zeros, sqrt
 
 
 class SGD:
@@ -24,13 +23,10 @@ class SGD:
         momentum: None or a non-negative number.
         '''
         assert all([isinstance(_, Value) for _ in wrt])
-        if isinstance(learning_rate, Number):
-            assert learning_rate >= 0
         assert momentum is None or momentum >= 0
 
         self.wrt = wrt
         self.learning_rate = learning_rate
-        self.learning_rate_is_number = isinstance(learning_rate, Number)
         self.momentum = momentum
         if momentum:
             self.velocity = [zeros(_.shape, dtype=DTYPE)
@@ -38,11 +34,10 @@ class SGD:
 
     def step(self):
         ''' One step of stochastic gradient descent '''
-        if self.learning_rate_is_number:
-            lr = self.learning_rate
-        else:
-            lr = next(self.learning_rate)
-            assert lr >= 0
+        lr = (next(self.learning_rate) if hasattr(self.learning_rate,
+                                                  '__next__')
+              else self.learning_rate)
+        assert lr >= 0
 
         if self.momentum is None:
             for v in self.wrt:
@@ -63,7 +58,6 @@ class ADAM:
             or learning_rate = .01, beta1 = .85,
                 beta2 = .99, eps_adam = 1e-8
         '''
-        assert learning_rate >= 0
         assert beta1 >= 0
         assert beta2 >= 0
         assert eps_adam >= 0
@@ -77,17 +71,20 @@ class ADAM:
         self.m = [zeros(_.shape, dtype=DTYPE) for _ in wrt]
         # second moments
         self.v = [zeros(_.shape, dtype=DTYPE) for _ in wrt]
+        self.num_steps = 0
 
-    def step(self, step, num_steps):
-        assert 0 <= step < num_steps
+    def step(self):
+        lr = (next(self.learning_rate) if hasattr(self.learning_rate,
+                                                  '__next__')
+              else self.learning_rate)
+        assert lr >= 0
 
-        lr = self.learning_rate * (1 - step / num_steps)
-
+        self.num_steps += 1
         for j, v in enumerate(self.wrt):
             self.m[j] *= self.beta1
             self.m[j] += (1 - self.beta1) * v.grad
             self.v[j] *= self.beta2
             self.v[j] += (1 - self.beta2) * v.grad ** 2
-            m_hat = self.m[j] / (1 - self.beta1 ** (step + 1))
-            v_hat = self.v[j] / (1 - self.beta2 ** (step + 1))
-            v.data -= lr * m_hat / (v_hat ** .5 + self.eps_adam)
+            m_hat = self.m[j] / (1 - self.beta1 ** self.num_steps)
+            v_hat = self.v[j] / (1 - self.beta2 ** self.num_steps)
+            v.data -= lr * m_hat / (sqrt(v_hat) + self.eps_adam)
