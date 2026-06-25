@@ -111,6 +111,19 @@ class AutodiffTest(TestCase):
         self.assertTrue(allclose(g.data, g2.data))
         self.assertTrue(allclose(a.grad, a2.grad))
 
+        a = Value(array([-5, -.23, 0, .3, 2.8]))
+        b = a.arcsinh().sum()
+
+        a2 = Tensor([-5, -.23, 0, .3, 2.8])
+        a2.requires_grad = True
+        b2 = a2.arcsinh().sum()
+
+        b.backward()
+        b2.backward()
+        self.assertTrue(allclose(b.data, b2.data))
+        self.assertTrue(allclose(a.grad, a2.grad))
+
+
     def test_tensordot(self):
 
         m1 = numpy.random.rand(2, 3, 4)

@@ -7,8 +7,8 @@ from numpy import (array, ndarray, nan,
                    argpartition, argmax as np_argmax,
                    max as np_max,
                    maximum, take, prod,
-                   exp, log, log1p, tanh,
-                   arctanh, arcsin,
+                   exp, log, log1p, tanh, sqrt,
+                   arctanh, arcsin, arcsinh,
                    transpose, sum as np_sum,
                    tensordot as np_tensordot,
                    broadcast_to, expand_dims,
@@ -300,6 +300,19 @@ class Value:
             valid_data = where((-1 <= self.data) & (self.data <= 1),
                                self.data, nan)
             self.grad += 1 / sqrt(1 - valid_data ** 2) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def arcsinh(self):
+        out = Value(arcsinh(self.data), (self,), 'arcsinh')
+
+        def _forward(**kwds):
+            out.data = arcsinh(self.data)
+        out._forward = _forward
+
+        def _backward():
+            self.grad += 1 / sqrt(1 + self.data ** 2) * out.grad
         out._backward = _backward
 
         return out

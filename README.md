@@ -110,6 +110,7 @@ x.backward()
 * `log1p`
 * `tanh`
 * `arctanh`
+* `arcsinh`
 * `T` for transpose
 * `sum`
 * `mean`
